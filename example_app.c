@@ -33,7 +33,6 @@ void my_keyboard(unsigned char key, int x, int y) {
 }
 
 void idleFunc(void) {
-    printf("");
 };
 
 int main(int argc, char **argv) {

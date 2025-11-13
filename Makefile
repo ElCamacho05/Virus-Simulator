@@ -4,41 +4,101 @@ ARFLAGS = rcs
 CFLAGS = -Wall -g
 LDFLAGS = -lGL -lGLU -lglut -lm
 
-LIBNAME = libigl.a
-TARGET = example
+# --- Nombres de Archivos ---
 
-SRCS = interface.c example_app.c
-OBJS = interface.o example_app.o
+# Ejecutables
+MAIN_TARGET = virus_simulator
+EXAMPLE_TARGET = example_igl
+TEST_TARGET = test_interface
 
-.PHONY: all lib example clean run
+# Librería
+LIB_INTERFACE = libigl.a
 
-all: example
+# Archivos de la interfaz (libigl.a)
+INTERFACE_SRC = interface.c
+INTERFACE_OBJ = interface.o
 
-lib: $(LIBNAME)
+# Archivos de la aplicación principal
+MAIN_SRCS = main_app.c DAO_General.c
+MAIN_OBJS = main_app.o DAO_General.o
 
-$(LIBNAME): interface.o
+# Archivos de la aplicación de ejemplo
+EXAMPLE_SRCS = example_app.c
+EXAMPLE_OBJS = example_app.o
+
+# Archivos de prueba
+TEST_SRCS = test_interface.c
+TEST_OBJS = test_interface.o
+
+# Todos los objetos generados
+ALL_OBJS = $(INTERFACE_OBJ) $(MAIN_OBJS) $(EXAMPLE_OBJS) $(TEST_OBJS)
+
+.PHONY: all lib main example test clean run run-main run-example run-test
+
+# --- Targets Principales ---
+
+# Target por defecto: Compila todas las aplicaciones
+all: $(MAIN_TARGET) $(EXAMPLE_TARGET) $(TEST_TARGET)
+
+# --- Librería de Interfaz (libigl.a) ---
+
+lib: $(LIB_INTERFACE)
+
+$(LIB_INTERFACE): $(INTERFACE_OBJ)
 	$(AR) $(ARFLAGS) $@ $^
 
-interface.o: interface.c interface.h
-	$(CC) $(CFLAGS) -c interface.c -o $@
+$(INTERFACE_OBJ): $(INTERFACE_SRC) interface.h
+	$(CC) $(CFLAGS) -c $< -o $@
 
-example: example_app.o $(LIBNAME)
-	$(CC) $(CFLAGS) example_app.o -L. -ligl $(LDFLAGS) -o $(TARGET)
+# --- Aplicación Principal (virus_simulator) ---
+
+main: $(MAIN_TARGET)
+
+$(MAIN_TARGET): $(MAIN_OBJS) $(LIB_INTERFACE)
+	$(CC) $(CFLAGS) $(MAIN_OBJS) -L. -ligl $(LDFLAGS) -o $@
+
+main_app.o: main_app.c interface.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+DAO_General.o: DAO_General.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# --- Aplicación de Ejemplo (example_igl) ---
+
+example: $(EXAMPLE_TARGET)
+
+$(EXAMPLE_TARGET): $(EXAMPLE_OBJS) $(LIB_INTERFACE)
+	$(CC) $(CFLAGS) $(EXAMPLE_OBJS) -L. -ligl $(LDFLAGS) -o $@
 
 example_app.o: example_app.c interface.h
-	$(CC) $(CFLAGS) -c example_app.c -o $@
+	$(CC) $(CFLAGS) -c $< -o $@
 
-clean:
-	rm -f *.o $(LIBNAME) $(TARGET)
+# --- Aplicación de Prueba (test_interface) ---
 
-run: example
-	./$(TARGET)
+test: $(TEST_TARGET)
+	./$(TEST_TARGET)
 
-test: lib test_interface
-	./test_interface
-
-test_interface: test_interface.o $(LIBNAME)
-	$(CC) $(CFLAGS) test_interface.o -L. -ligl $(LDFLAGS) -o test_interface
+$(TEST_TARGET): $(TEST_OBJS) $(LIB_INTERFACE)
+	$(CC) $(CFLAGS) $(TEST_OBJS) -L. -ligl $(LDFLAGS) -o $@
 
 test_interface.o: test_interface.c interface.h
-	$(CC) $(CFLAGS) -c test_interface.c -o test_interface.o
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# --- Targets de Ejecución ---
+
+# Ejecuta el programa principal por defecto
+run: run-main
+
+run-main: $(MAIN_TARGET)
+	./$(MAIN_TARGET)
+
+run-example: $(EXAMPLE_TARGET)
+	./$(EXAMPLE_TARGET)
+
+run-test: $(TEST_TARGET)
+	./$(TEST_TARGET)
+
+# --- Limpieza ---
+
+clean:
+	rm -f $(ALL_OBJS) $(LIB_INTERFACE) $(MAIN_TARGET) $(EXAMPLE_TARGET) $(TEST_TARGET)
