@@ -1,6 +1,6 @@
 Proyecto DAA
 to do:
-	+++ (Punto 1) DAO para datos (Data Access Object, objeto o clase para obtener datos de una base de datos, en este caso para importar los datos de un txt que hagamos para los datos de las personas, virus, cepas, regiones, etc y guardar la informacion en estructuras)
+	+++ (Punto 1) DAO para datos (Data Access Object, objeto o clase para obtener datos de una base de datos, en este caso para importar los datos de un txt que hagamos para los datos de las personas, virus, cepas, regiones, etc y guardar la informacion en estructuras
 	+++ Generar nuestra primaria de datos, un 10-20% de los datos requeridos finales seran suficientes para esta fase
 	+++ Completar libreria interface.c para que tenga todos los elementos que se vayan a usar en la aplicacion principal
 	+++ Logica del programa
@@ -14,5 +14,5 @@ to do:
 			ooo vacunar a la gente (mas suceptibles de ser contagiados)
 		--- (Punto 7) Agrupar cepas por estructuras de nombre (PREGUNTAR)
 		--- (Punto 8 )Control de historial de contagios con referencia a todos los datos
-			se puede guardar en una bd o un documento,en el cual se puede buscar por numero de pasiente o algo asi.
+			se puede guardar en una bd (un documento), en el cual se puede buscar por numero de paciente o algo asi.
 		
