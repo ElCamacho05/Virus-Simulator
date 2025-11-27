@@ -1,0 +1,71 @@
+Personas:
+	estructura
+	
+	almacenamiento de personas: (*Person[]) guardarlas aparte como una lista de 
+	apuntadores en lugar de listas enlazadas
+	
+	lista de contactos: (ContList *directory) lista enlazada de personas
+Regiones:
+	estructura
+	
+	¿dirigido o bidireccional?
+	
+Algoritmos:
+	Fase 1: Inicializacion y Analisis de Datos
+		quicksort: ordenar riesgo (DESC)
+		
+		mergesort: ordenar t de infeccion (ASC)
+		
+		heapsort: ordear por nombres
+	
+	Fase 2: Deteccion de brotes
+		deteccion de brotes: (BFS, compeljidad V+E, peor caso V+V²=v²)identificar
+		zonas afectadas expandiendo los nodos que se conocen y ver si estan en riesgo/afectadas
+	
+	Fase 3: Propagacion temporal
+		simulacion diaria: iterar sobre la lista de personas en riesgo y calcular
+		aleatoriamente/probabilisticamente si se infectara o no (recorrido secuencial de lista
+		dada por BFS de deteccion e brotes, complejidad N) 
+		
+	Fase 4: Minimizacion del riesgo total
+		Aislar los nodos con mayor potencial de contagio o con menor defensa
+		(puede ser un recorrido del grafo por anchura, como Greedy, obteniendo los mas
+		propensos que esten en contacto con los contagiados)
+	
+	Fase 5: Identificacion de rutas criticas
+		camino de mayor probabilidad de infeccion entre dos nodos
+		
+		Dijkstra (con heap): como ahora hay que maximizar en lugar de minimizar, se va a hacer al reves 
+		todos los valores iniciales del grafo de adyacencias, pero como se quiere evaluar
+		lo contrario en dijkstra, y las probabilidades son entre 0 y 1,
+		y los logaritmos dan Y negativo entre X=0 y X=1, multiplicarlo por -1 evaluaria
+		peor los que menor probabilidad tengan
+		-(ln(0.25) + ln(0.25)) = 2.7725
+		-(ln(0.5) + ln(0.5)) = 1.3862
+		
+		palabras de gemini god.
+		
+		Opción B: El Truco de los Logaritmos (Matemáticamente elegante)Si prefieres usar un
+		Dijkstra estándar de "camino mínimo" sin tocar la lógica del comparador, puedes 
+		transformar los datos usando logaritmos.Sabemos que maximizar $P_1 \times P_2$ es 
+		equivalente a maximizar $\log(P_1) + \log(P_2)$.Como las probabilidades son menores 
+		a 1, sus logaritmos son negativos. Para trabajar con sumas positivas (como distancias), 
+		usamos el logaritmo negativo.Nuevo Peso $= -\log(\text{probabilidad})$.Ahora, el 
+		problema se convierte en encontrar el camino con la suma mínima de estos nuevos pesos. 
+		Esto lo resuelve el Dijkstra de toda la vida.
+		
+	Fase 6: rutas optimas de contencion:
+		Maximum Spanning Tree (con heap): se va extrayendo el de mayor probabilidad (convertido
+		a menor peso por conversion a probabilidades logaritmicas), conveniente por que busca 
+		el camino con mayores probabilidades de transmicion para cortar esa rama
+		
+	Fase 7: Clustering de cepas similares:
+		arbol Trie: construccion lineal
+		
+		virus madre "A", cepas "AB", "AC"... "AZ"
+	
+	Fase 8: almacenamiento y consulta eficiente
+		Necesarias a las personas en una tabla hash
+		
+		Busqueda de una persona mediante tablas hash, acceso instantaneo
+		

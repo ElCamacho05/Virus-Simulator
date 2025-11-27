@@ -1,8 +1,22 @@
+// General Libraries
 #include <stdio.h>
 #include <stdlib.h>
 #include <GL/glut.h>
-#include "interface.h"
 
+// Classes
+#include "Clases/Person.h"
+#include "Clases/Regions.h"
+#include "Clases/Virus.h"
+
+// Data retrieve
+#include "DAO_General.h"
+
+// Drawing & Plotting
+#include "OpenGLDrawing/interface.h"
+
+// Constants for Graphs
+#define N_REGIONS 30 // 20 minimo
+#define N_POPULATION 200 // no dice, pero aprox 66 por region
 
 /*
 STRUCTS AND TYPES DECLARATION
@@ -10,10 +24,13 @@ STRUCTS AND TYPES DECLARATION
 
 // regions
 typedef struct region Region;
-typedef struct adjacentRegion AdjReg;
+typedef struct adjacentRegion AdjReg; // DEPRECATED
+Region *graphRegions[N_REGIONS][N_REGIONS];
+
 // people
 typedef struct person Person;
-typedef struct contactlist ContList;
+typedef struct contactlist ContList; // DEPRECATED
+Person *graphPerson[N_POPULATION][N_POPULATION];
 
 // Virus & Strains
 typedef struct virus Virus;
@@ -54,12 +71,16 @@ typedef struct contactlist{
     struct contactlist *next;
 } ContList;
 
-// Viruses
+// Viruses (TRIE)
 typedef struct virus{
     int id;
     char name[20];
+    double beta; // ??
+    double caseFatalityRatio;
+    double recovery; // ??
 } Virus;
 
+// DEPRECATED
 typedef struct strain{
     Virus *father;
     double beta; // ??
