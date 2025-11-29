@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <GL/glut.h>
+#include <math.h>
 
 // Classes
 #include "Clases/Person.h"
@@ -14,28 +15,13 @@
 // Drawing & Plotting
 #include "OpenGLDrawing/interface.h"
 
-// Constants for Graphs
-#define N_REGIONS 30 // 20 minimo
-#define N_POPULATION 200 // no dice, pero aprox 66 por region
+// Algorithms
+#include "Algorithms/Algorithms.h"
 
-/*
-STRUCTS AND TYPES DECLARATION
-*/
-
-// regions
-typedef struct region Region;
-typedef struct adjacentRegion AdjReg; // DEPRECATED
-Region *graphRegions[N_REGIONS][N_REGIONS];
-
-// people
-typedef struct person Person;
-typedef struct contactlist ContList; // DEPRECATED
-Person *graphPerson[N_POPULATION][N_POPULATION];
-
-// Virus & Strains
-typedef struct virus Virus;
-typedef struct strain Strain;
-
+// Hash Arrays of data
+int *popArr;
+int *regArr;
+int *virArr;
 
 /*
 STRUCTS AND TYPES DEFINITION
@@ -54,44 +40,42 @@ typedef struct adjacentRegion{
     struct adjacentRegion *nextAdjReg;
 } AdjReg;
 
-// People
-typedef struct person{
-    int id;
-    char name[30];
-    Region *region;
-    double initialDegree;
-    double contagiousness;
-    ContList *directory;
-    int daysInfected;
-} Person;
-
-typedef struct contactlist{
-    Person *person;
-    double contagiousnessProbability;
-    struct contactlist *next;
-} ContList;
-
-// Viruses (TRIE)
-typedef struct virus{
-    int id;
-    char name[20];
-    double beta; // ??
-    double caseFatalityRatio;
-    double recovery; // ??
-} Virus;
-
-// DEPRECATED
-typedef struct strain{
-    Virus *father;
-    double beta; // ??
-    double caseFatalityRatio;
-    double recovery; // ??
-} Strain;
-
-
-
-
 int pause = 0;
+
+void init();
+void my_display(void);
+void my_keyboard(unsigned char key, int x, int y);
+void idle_func(void);
+
+int main(int argc, char *argv[]) {
+    iglSetDisplayFunc(my_display);
+    iglInit(&argc, argv, iglGetLogicalWidth(), iglGetLogicalHeight(), "Apocalypse Simulator");
+    iglSetIdleFunc(idle_func);
+    iglSetKeyboardFunc(my_keyboard);
+    iglRun();
+    return 0;
+}
+
+void init() {
+    // Initialize population Hash Array
+    int maxPopArr = (int) sqrt(MAX_POPULATION - 0);
+    int pop[maxPopArr];
+    popArr = pop;
+
+    // Initialize Regions Hash Array
+    int maxRegArr = (int) sqrt(MAX_REGIONS - 0);
+    int reg[maxRegArr];
+    popArr = reg;
+
+    // Initialize Viruses Hash Array
+    int maxVirArr = (int) sqrt(MAX_VIRUSES - 0);
+    int vir[maxVirArr];
+    popArr = vir;
+
+    // Here comes the rest of the data initialization logic
+    //...
+    // recommended use of getHash from 
+}
 
 void my_display(void) {
     glColor3f(0.0f, 0.0f, 0.0f);
@@ -113,14 +97,4 @@ void my_keyboard(unsigned char key, int x, int y) {
 }
 
 void idle_func(void) {
-    // printf("Pause: %d\n", pause);
-}
-
-int main(int argc, char *argv[]) {
-    iglSetDisplayFunc(my_display);
-    iglInit(&argc, argv, iglGetLogicalWidth(), iglGetLogicalHeight(), "Apocalypse Simulator");
-    iglSetIdleFunc(idle_func);
-    iglSetKeyboardFunc(my_keyboard);
-    iglRun();
-    return 0;
 }
