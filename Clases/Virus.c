@@ -1,4 +1,4 @@
-// General Libraries
+// Clases/Virus.c (
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
@@ -7,77 +7,60 @@
 #include "Person.h"
 #include "Virus.h"
 
-// VIRUS functions
-bool isempty(struct TrieNode *root) {
-    for (int i = 0; i < ALPHABET_SIZE; i++) {
-        if (root->children[i] != NULL) {
-            return false;
-        }
-    }
-    return true;
+
+// ------------------------------------------------------------------
+// --- IMPLEMENTACIÓN DE HASH TABLE (PARA DAO O(1)) ---
+// ------------------------------------------------------------------
+
+// Función Hash simple: Mapea la clave (cepa_id) a un índice de la tabla.
+unsigned int hash_function(int key) {
+    return (unsigned int)key % HASH_TABLE_SIZE;
 }
 
-void insert(struct TrieNode *root, const char *key) {
-    if (virusesCount >= 50) return; 
-    struct TrieNode *current = root;
-    for (int i = 0; i < strlen(key); i++) {
-        int index = key[i] - 'a';
-        if (current->children[index] == NULL) {
-            current->children[index] = createNode();
-        }
-        current = current->children[index];
-    }
-    current->isEndEfWord = true;
-    virusesCount++;
+CepaHashTable* create_cepa_hash_table() {
+    CepaHashTable *ht = (CepaHashTable*)calloc(1, sizeof(CepaHashTable));
+    return ht;
 }
 
-struct TrieNode *createNode() {
-    struct TrieNode *node = (struct TrieNode *)malloc(sizeof(struct TrieNode));
-    node->isEndEfWord = 0;
-    for (int i = 0; i < 26; i++) {
-        node->children[i] = NULL;
-    }
-    return node;
+// Inserta una Cepa en la Tabla Hash (O(1) promedio)
+void hash_table_insert_cepa(CepaHashTable *ht, const CEPA *cepa) {
+    if (!ht || !cepa) return;
+
+    unsigned int index = hash_function(cepa->id); // Usamos el ID como clave
+    CepaNode *new_node = (CepaNode*)malloc(sizeof(CepaNode));
+    if (!new_node) return;
+
+    new_node->data = *cepa;
+    new_node->next = ht->table[index];
+    ht->table[index] = new_node;
+    ht->count++;
 }
 
-struct TrieNode* search(struct TrieNode *root, const char *key) {
-    struct TrieNode *current = root;
-    for (int i = 0; i < strlen(key); i++) {
-        int index = key[i] - 'a';
-        if (current->children[index] == NULL) {
-            return false;
+// Busca una Cepa por ID (O(1) promedio)
+CEPA* hash_table_lookup_cepa(CepaHashTable *ht, int cepa_id) {
+    if (!ht) return NULL;
+
+    unsigned int index = hash_function(cepa_id);
+    CepaNode *current = ht->table[index];
+
+    while (current != NULL) {
+        if (current->data.id == cepa_id) {
+            return &current->data;
         }
-        current = current->children[index];
+        current = current->next;
     }
-    // return (current != NULL && current->isEndEfWord);
-    if (current != NULL && current->isEndEfWord)
-        return current;
     return NULL;
 }
 
-struct TrieNode *deletehelper(struct TrieNode *root, const char *key, int depth) {
-    if (root == NULL) {
-        return NULL;
-    }
-    if (depth == strlen(key)) {
-        if (root->isEndEfWord) {
-            root->isEndEfWord = false;
+void free_cepa_hash_table(CepaHashTable *ht) {
+    if (!ht) return;
+    for (int i = 0; i < HASH_TABLE_SIZE; i++) {
+        CepaNode *current = ht->table[i];
+        while (current != NULL) {
+            CepaNode *temp = current;
+            current = current->next;
+            free(temp);
         }
-        if (isempty(root)) {
-            free(root);
-            root = NULL;
-        }
-        return root;
     }
-    int index = key[depth] - 'a';
-    root->children[index] = deletehelper(root->children[index], key, depth + 1);
-    if (isempty(root) && !root->isEndEfWord) {
-        free(root);
-        root = NULL;
-    }
-    return root;
-}
-
-void deletekey(struct TrieNode *root, const char *key) {
-    deletehelper(root, key, 0);
+    free(ht);
 }

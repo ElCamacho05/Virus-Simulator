@@ -1,34 +1,59 @@
+// Clases/Virus.h
+
 #ifndef VIRUS_H
 #define VIRUS_H
 
-// VIRUS constants
-#define ALPHABET_SIZE 27 // alphabet
-#define MAX_VIRUSES 100 // 50 ORIGINALLY
+#include <stdbool.h>
 
-// VIRUS structures
-typedef struct Virus{
+// VIRUS constants
+#define ALPHABET_SIZE 27
+#define MAX_VIRUSES 100 
+
+// --- HASH TABLE CONSTANTS (FOR O(1) ACCESS) ---
+#define HASH_TABLE_SIZE 101 // Tamaño primo para el hashing
+
+// VIRUS structures (Renombrada a CEPA para claridad del proyecto)
+typedef struct Cepa{
     int id;
     char name[20];
-    double beta; // ??
-    double caseFatalityRatio;
-    double recovery; // ??
-} VIRUS;
+    double beta; 
+    double caseFatalityRatio; // Letalidad
+    double recovery; // Gamma de recuperación
+} CEPA;
 
+
+// --- ESTRUCTURAS DE HASH TABLE (O(1) DAO) ---
+typedef struct CepaNode {
+    CEPA data;
+    struct CepaNode *next;
+} CepaNode;
+
+typedef struct {
+    CepaNode *table[HASH_TABLE_SIZE];
+    int count;
+} CepaHashTable;
+
+
+// --- ESTRUCTURAS DE TRIE (Para Tarea 7: Agrupación O(L)) ---
 struct TrieNode {
     struct TrieNode *children[26];
     bool isEndEfWord;
-    VIRUS *virus;
+    CEPA *cepa; // Lo cambiamos de VIRUS* a CEPA*
 };
+
 
 // VIRUSES variables
 int virusesCount = 0;
 
-// VIRUS functions
+// Prototipos de HASH TABLE (Implementados en Virus.c)
+CepaHashTable* create_cepa_hash_table();
+void hash_table_insert_cepa(CepaHashTable *ht, const CEPA *cepa);
+CEPA* hash_table_lookup_cepa(CepaHashTable *ht, int cepa_id);
+void free_cepa_hash_table(CepaHashTable *ht);
+
+
+// VIRUS functions (Prototypes for Trie, already existing)
 bool isempty(struct TrieNode *root);
-void insert(struct TrieNode *root, const char *key);
-struct TrieNode *createNode();
-struct TrieNode* search(struct TrieNode *root, const char *key);
-struct TrieNode *deletehelper(struct TrieNode *root, const char *key, int depth);
-void deletekey(struct TrieNode *root, const char *key);
+// ... (Otros prototipos de Trie) ...
 
 #endif
