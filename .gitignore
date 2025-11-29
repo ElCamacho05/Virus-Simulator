@@ -1,0 +1,10 @@
+DAO_General.o
+libigl.a
+main_app.o
+virus_simulator
+.vscode/settings.json
+Algorithms/Algorithms.o
+Clases/Person.o
+Clases/Regions.o
+Clases/Virus.o
+OpenGLDrawing/interface.o
