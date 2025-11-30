@@ -2,6 +2,13 @@
 #include <GL/glut.h>
 #include <stdio.h>
 #include "utils.h"
+#include "DAO_General.h"
+#include "dataRepository.h"
+#include "Regions.h"
+#include "Person.h"
+
+#define X 0
+#define Y 1
 
 // Function definition
 
@@ -44,22 +51,49 @@ void display() {
     glLoadIdentity();
 
     /* Draw test circle at origin */
-    glColor3f(1.0, 1.0, 1.0);
-    circle(50.0, 30, 1.0, 1.0, 1.0, 1.0);
+    // glColor3f(1.0, 1.0, 1.0);
+    // circle(50.0, 30, 1.0, 1.0, 1.0, 1.0);
     
-    /* Draw guide lines from origin */
-    glColor3f(0.0, 1.0, 0.0);
-    glBegin(GL_LINES);
-        glVertex2d(0.0, 0.0);
-        glVertex2d(125, 0.0);
-        glVertex2d(0.0, 0.0);
-        glVertex2d(0.0, 125);
-    glEnd();
+
+
+    drawRegions(GlobalData);
 
     glutSwapBuffers();
 }
 
 
+void drawRegions(BIO_SIM_DATA *data) {
+    REGION_HASH_TABLE *reg = data->regions_table;
+    PERSON_HASH_TABLE *pop = data->persons_table;
+    // Draw population
+    for (int i = 0; i< PERSON_HASH_TABLE_SIZE; i++) {
+        PERSON_NODE *pN = pop->table[i];
+        while (pN) {
+            glPushMatrix();
+                glTranslatef(pN->data.drawConf.pos[X], pN->data.drawConf.pos[Y], 0.0);
+                circle(3.0, 36, 1.0, 0.0, 1.0, 1.0);
+            glPopMatrix();
+            pN = pN->next;
+        }
+    }
+    // Draw regions
+    for (int i = 0; i< REGION_HASH_TABLE_SIZE; i++) {
+        REGION_NODE *rN = reg->table[i];
+        while (rN) {
+            glPushMatrix();
+                glTranslatef(rN->data.drawConf.pos[X], rN->data.drawConf.pos[Y], 0.0);
+                circle(rN->data.drawConf.radio, 36, 1.0, 1.0, 1.0, 1.0);
+            glPopMatrix();
+            rN = rN->next;
+        }
+    }
+
+    
+}
+
+void idle() {
+    glutPostRedisplay();
+}
 
  void reshape(int w, int h)
 {

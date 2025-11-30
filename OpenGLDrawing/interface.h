@@ -1,12 +1,15 @@
 #ifndef INTERFACE_H
 #define INTERFACE_H
 
-#define WIDTH 500
-#define HEIGHT 500
+#include "DAO_General.h"
+
+#define WIDTH 750
+#define HEIGHT 750
 
 // Function declaration
 void init(int *argc, char *argv[]);
 void display();
+void drawRegions(BIO_SIM_DATA *data);
 void idle();
 void reshape(int w, int h);
 void keyboard(unsigned char key, int x, int y);
