@@ -1,6 +1,6 @@
 #ifdef ALGORITHMS_H
 #define ALGORITHMS_H
 
-int getHash(int id, int size);
+unsigned int hashFunction(int key, int size);
 
 #endif
