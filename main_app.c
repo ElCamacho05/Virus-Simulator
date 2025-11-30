@@ -13,7 +13,8 @@
 #include "DAO_General.h"
 
 // Drawing & Plotting
-#include "OpenGLDrawing/interface.h"
+// #include "OpenGLDrawing/interface.h"
+#include "OpenGLDrawing/interfaceV2.h"
 
 // Algorithms (Logic for the main purpose of the program)
 #include "Algorithms/Algorithms.h"
@@ -23,13 +24,10 @@ BIO_SIM_DATA *GlobalData = NULL;
 int pause = 0;
 int simulation_day = 0;
 
-// Prototipos de funciones
+// Function prototypes
 void init_simulation_data();
-void my_display(void);
-void my_keyboard(unsigned char key, int x, int y);
-void idle_func(void);
 
-// --- FUNCIÓN PRINCIPAL ---
+// Main entry point
 int main(int argc, char *argv[]) {
     init_simulation_data();
 
@@ -37,20 +35,21 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "Error fatal: No se pudieron cargar los datos iniciales. Finalizando.\n");
         return 1;
     }
-    
-    // 2. INICIALIZACIÓN GRÁFICA Y BUCLE PRINCIPAL
-    iglSetDisplayFunc(my_display);
-    iglInit(&argc, argv, iglGetLogicalWidth(), iglGetLogicalHeight(), "Apocalypse Simulator");
-    iglSetIdleFunc(idle_func);
-    iglSetKeyboardFunc(my_keyboard);
-    iglRun();
-    
-    free_biosim_data(GlobalData); 
+
+    init(&argc, argv);
+
+    free_biosim_data(GlobalData);
     return 0;
 }
 
+// it declares itself on interfaceV2.h, but the other library takes as it's own 
+void idle() {
+    printf(".");
+    glutPostRedisplay();
+}
+
 void init_simulation_data() {
-    // data loading
+    // Load initial data from CSV files
     GlobalData = load_initial_data(
         "cepas.txt", 
         "territorios.txt", 
@@ -59,50 +58,14 @@ void init_simulation_data() {
     );
 
     if (GlobalData != NULL) {
-        printf("Simulador Inicializado. Población cargada.\n");
+        printf("Simulator initialized. Population loaded.\n");
         
-        // 2. Establecer Brotes Iniciales (Tarea 2, se llama a la función aquí)
-        // Ejemplo: 10 brotes con la Cepa ID 1
+        // TODO: Set initial outbreaks (Task 2)
         // establish_initial_outbreak(GlobalData, 10, 1);
         
-        // 3. Inicializar el Clustering de Cepas (Tarea 7)
+        // TODO: Initialize strain clustering (Task 7)
         // cluster_strains(GlobalData);
     }
-
-    // ELIMINADO: La lógica de inicialización de popArr, regArr, virArr que usaba
-    // memoria de stack (int pop[maxPopArr];) es incorrecta y se reemplaza por el DAO.
 }
 
 
-// --- FUNCIONES DE GRÁFICOS Y BUCLE ---
-
-void my_display(void) {
-    // ELIMINADA la lógica de dibujo simple que no refleja el estado del simulador
-    
-    // Lógica para dibujar la visualización del simulador usando GlobalData
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    // glColor3f(1.0f, 1.0f, 1.0f); 
-    // ... (Tu lógica OpenGL para dibujar regiones/personas) ...
-    glutSwapBuffers();
-}
-
-void my_keyboard(unsigned char key, int x, int y) {
-    if (key == 27) { 
-        free_biosim_data(GlobalData); // Liberar memoria antes de salir
-        exit(0); 
-    }
-    if (key == 'p' || key == 'P') {pause = !pause; }; // pause
-}
-
-void idle_func(void) {
-    if (!pause && GlobalData) {
-        // Ejecutar el ciclo de simulación si no está en pausa
-        simulation_day++;
-        
-        // Aquí se llamaría a la función de Propagación (Tarea 3 de Armando)
-        // run_daily_simulation(GlobalData, simulation_day); 
-
-        // Repintar para mostrar cambios
-        glutPostRedisplay(); 
-    }
-}

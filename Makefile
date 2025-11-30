@@ -20,8 +20,8 @@ TEST_TARGET = test_interface
 LIB_INTERFACE = libigl.a
 
 # Archivos de la interfaz (OpenGLDrawing/)
-INTERFACE_SRC = $(OPENGL_DIR)/interface.c
-INTERFACE_OBJ = $(OPENGL_DIR)/interface.o
+INTERFACE_SRC = $(OPENGL_DIR)/interfaceV2.c
+INTERFACE_OBJ = $(OPENGL_DIR)/interfaceV2.o
 
 # Archivos de las clases (Clases/)
 CLASES_SRCS = $(CLASES_DIR)/Person.c $(CLASES_DIR)/Regions.c $(CLASES_DIR)/Virus.c
