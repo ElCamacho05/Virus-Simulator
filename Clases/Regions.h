@@ -1,28 +1,49 @@
-// Clases/Regions.h
-
 #ifndef REGIONS_H
 #define REGIONS_H
 
-#include <string.h>
-
+// REGION constants
 #define MAX_REGIONS 30 
+#define REGION_HASH_TABLE_SIZE 41 // prime number for initializing hash table
+
+// REGION variables
+extern int RegionsCount;
 
 // REGION structures
 typedef struct Region{
     int id;
     char name[20];
+    int *peopleIDs;
+    int populationCount;    
     int infected;
-    
-    // AGREGADO: Para Tarea 2, necesitamos saber qué individuos están aquí.
-    int *individuos_ids;
-    int count_individuos;
-    
 } REGION;
 
-// Regions variables
-int RegionsCount = 0;
+typedef struct RegionNode { // HASH wrapper structure
+    REGION data;
+    struct RegionNode *next;
+} REGION_NODE;
 
-// REGION functions
+typedef struct { // HASH TABLE centralized structure
+    REGION_NODE *table[REGION_HASH_TABLE_SIZE];
+    int count;
+} REGION_HASH_TABLE;
+
+
+/*
+---------------
+REGION Functions
+---------------
+*/
+
+// ---------------
+// Basic Functions
 REGION *createRegion(int id, char name[]);
+
+// ------------------
+// For Hash Functions
+unsigned int hashFunction(int key);
+REGION_HASH_TABLE* createRegionHashTable();
+void insertRegionInHash(REGION_HASH_TABLE *ht, const REGION *region);
+REGION* searchRegionInHash(REGION_HASH_TABLE *ht, int region_id);
+void freeRegionInHash(REGION_HASH_TABLE *ht);
 
 #endif

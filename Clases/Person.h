@@ -5,59 +5,66 @@
 
 // Self Library
 #include "Regions.h" 
-#include "Virus.h"   // CLAVE para incluir CepaHashTable
+#include "Virus.h"
 
 // PERSON constants
 #define MAX_POPULATION 200 
+#define PERSON_HASH_TABLE_SIZE 263
 
-// --- ENUMS DE ESTADO (Requerido para la simulación) ---
+// Actual state of the Person
 typedef enum {
-    SANO,
-    INFECTADO,
-    INMUNE,
-    MUERTO
-} EstadoSalud;
+    HEALTH,
+    INFECTED,
+    IMMUNE,
+    DEATH
+} HealthStatus;
 
-// --- PERSON STRUCTURES  ---
+// PERSON structures
 typedef struct Person{
     int id;
     char name[30];
     
-    // MODIFICADO: Usamos ID (FK) para indexación
-    int territorio_id; 
+    int regionID; 
     
     double initialDegree; 
     
-    // AGREGADO: Campo requerido por el PDF (en lugar de contagiousness)
-    double riesgo_inicial; 
+    double initialRisk; 
     
-    // Campos de Simulación:
-    EstadoSalud estado; 
-    int cepa_actual_id; // ID de la cepa
+    HealthStatus status; 
+    int actualStrainID;
     int daysInfected;
 
     
 } PERSON;
 
+typedef struct PersonNode { // HASH wrapper structure
+    PERSON data;
+    struct PersonNode *next;
+} PERSON_NODE;
 
-// --- ESTRUCTURA GLOBAL DEL DAO (BioSimData) ---
-typedef struct {
-    // Array de Individuos (O(1) si los IDs son contiguos)
-    PERSON *individuos_table;  
-    
-    // Tabla Hash de Cepas (Garantiza el acceso O(1))
-    CepaHashTable *cepas_hash_table; 
-    
-    // Puntero a la estructura de territorios (definida en Regions.h)
-    REGION *territorios_table; 
+typedef struct { // HASH TABLE centralized structure
+    PERSON_NODE *table[PERSON_HASH_TABLE_SIZE];
+    int count;
+} PERSON_HASH_TABLE;
 
-    int max_individuos;
-    int max_territorios;
+// Person variables
+extern int PopulationCount;
 
-} BioSimData;
+/*
+---------------
+PERSON Functions
+---------------
+*/
 
-// Prototipos que el DAO usará
-BioSimData* create_biosim_data(int max_i, int max_t);
-void free_biosim_data(BioSimData *data);
+// ------------------
+// Basic Functions
+PERSON *createPerson(int id, char *name, int regionID, double initialDegree, double initialRisk, int daysInfected);
+
+// ------------------
+// For Hash Functions
+PERSON_HASH_TABLE* createPersonHashTable();
+void insertPersonInHash(PERSON_HASH_TABLE *ht, const PERSON *person);
+PERSON* searchPersonInHash(PERSON_HASH_TABLE *ht, int person_id);
+void freePersonInHash(PERSON_HASH_TABLE *ht);
 
 #endif

@@ -1,50 +1,55 @@
-// Clases/Virus.c (
-#include <stdlib.h>
-#include <stdbool.h>
-#include <string.h>
-
 // Self Library
-#include "Person.h"
 #include "Virus.h"
 
+// General Libraries
+#include <stdlib.h>
+#include <string.h>
 
-// ------------------------------------------------------------------
-// --- IMPLEMENTACIÓN DE HASH TABLE (PARA DAO O(1)) ---
-// ------------------------------------------------------------------
+// Other Classes libraries
+#include "Person.h"
+#include "Algorithms.h"
 
-// Función Hash simple: Mapea la clave (cepa_id) a un índice de la tabla.
-unsigned int hash_function(int key) {
-    return (unsigned int)key % HASH_TABLE_SIZE;
-}
+// STRAIN Variables
+int virusesCount = 0;
 
-CepaHashTable* create_cepa_hash_table() {
-    CepaHashTable *ht = (CepaHashTable*)calloc(1, sizeof(CepaHashTable));
+/*
+---------------
+STRAIN Functions
+---------------
+*/
+
+// ------------------
+// Basic Functions
+
+// ------------------
+// For Hash Functions
+
+STRAIN_HASH_TABLE* createStrainHashTable() {
+    STRAIN_HASH_TABLE *ht = (STRAIN_HASH_TABLE*)calloc(1, sizeof(STRAIN_HASH_TABLE));
     return ht;
 }
 
-// Inserta una Cepa en la Tabla Hash (O(1) promedio)
-void hash_table_insert_cepa(CepaHashTable *ht, const CEPA *cepa) {
-    if (!ht || !cepa) return;
+void insertStrainInHash(STRAIN_HASH_TABLE *ht, const STRAIN *strain) {
+    if (!ht || !strain) return;
 
-    unsigned int index = hash_function(cepa->id); // Usamos el ID como clave
-    CepaNode *new_node = (CepaNode*)malloc(sizeof(CepaNode));
+    unsigned int index = hashFunction(strain->id);
+    STRAIN_NODE *new_node = (STRAIN_NODE*)malloc(sizeof(STRAIN_NODE));
     if (!new_node) return;
 
-    new_node->data = *cepa;
+    new_node->data = *strain;
     new_node->next = ht->table[index];
     ht->table[index] = new_node;
     ht->count++;
 }
 
-// Busca una Cepa por ID (O(1) promedio)
-CEPA* hash_table_lookup_cepa(CepaHashTable *ht, int cepa_id) {
+STRAIN* searchStrainInHash(STRAIN_HASH_TABLE *ht, int strain_id) {
     if (!ht) return NULL;
 
-    unsigned int index = hash_function(cepa_id);
-    CepaNode *current = ht->table[index];
+    unsigned int index = hashFunction(strain_id);
+    STRAIN_NODE *current = ht->table[index];
 
     while (current != NULL) {
-        if (current->data.id == cepa_id) {
+        if (current->data.id == strain_id) {
             return &current->data;
         }
         current = current->next;
@@ -52,15 +57,91 @@ CEPA* hash_table_lookup_cepa(CepaHashTable *ht, int cepa_id) {
     return NULL;
 }
 
-void free_cepa_hash_table(CepaHashTable *ht) {
+void freeStrainInHash(STRAIN_HASH_TABLE *ht) {
     if (!ht) return;
-    for (int i = 0; i < HASH_TABLE_SIZE; i++) {
-        CepaNode *current = ht->table[i];
+    for (int i = 0; i < VIRUS_HASH_TABLE_SIZE; i++) {
+        STRAIN_NODE *current = ht->table[i];
         while (current != NULL) {
-            CepaNode *temp = current;
+            STRAIN_NODE *temp = current;
             current = current->next;
             free(temp);
         }
     }
     free(ht);
+}
+
+//------------------------------------
+// For Strain Logic and Classification
+int isempty(struct TrieNode *root) {
+    for (int i = 0; i < ALPHABET_SIZE; i++) {
+        if (root->children[i] != NULL) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+void insert(struct TrieNode *root, const char *key) {
+    if (virusesCount >= 50) return; 
+    struct TrieNode *current = root;
+    for (int i = 0; i < strlen(key); i++) {
+        int index = key[i] - 'a';
+        if (current->children[index] == NULL) {
+            current->children[index] = createNode();
+        }
+        current = current->children[index];
+    }
+    current->isEndEfWord = 1;
+    virusesCount++;
+}
+
+struct TrieNode *createNode() {
+    struct TrieNode *node = (struct TrieNode *)malloc(sizeof(struct TrieNode));
+    node->isEndEfWord = 0;
+    for (int i = 0; i < 26; i++) {
+        node->children[i] = NULL;
+    }
+    return node;
+}
+
+struct TrieNode* search(struct TrieNode *root, const char *key) {
+    struct TrieNode *current = root;
+    for (int i = 0; i < strlen(key); i++) {
+        int index = key[i] - 'a';
+        if (current->children[index] == NULL) {
+            return NULL;
+        }
+        current = current->children[index];
+    }
+    // return (current != NULL && current->isEndEfWord);
+    if (current != NULL && current->isEndEfWord)
+        return current;
+    return NULL;
+}
+
+struct TrieNode *deletehelper(struct TrieNode *root, const char *key, int depth) {
+    if (root == NULL) {
+        return NULL;
+    }
+    if (depth == strlen(key)) {
+        if (root->isEndEfWord) {
+            root->isEndEfWord = 0;
+        }
+        if (isempty(root)) {
+            free(root);
+            root = NULL;
+        }
+        return root;
+    }
+    int index = key[depth] - 'a';
+    root->children[index] = deletehelper(root->children[index], key, depth + 1);
+    if (isempty(root) && !root->isEndEfWord) {
+        free(root);
+        root = NULL;
+    }
+    return root;
+}
+
+void deletekey(struct TrieNode *root, const char *key) {
+    deletehelper(root, key, 0);
 }

@@ -1,13 +1,25 @@
-// Regions.c
+// Self Library
+#include "Regions.h"
 
 // General Libraries
 #include <stdlib.h>
 #include <string.h>
 
-// Self Library
-#include "Regions.h"
+// Other Classes libraries
+#include "Person.h"
+#include "Algorithms.h"
 
-// REGION functions
+// REGION variables
+int RegionsCount;
+
+/*
+---------------
+REGION Functions
+---------------
+*/
+
+// ---------------
+// Basic Functions
 REGION *createRegion(int id, char name[]) {
     REGION *reg = (REGION *) malloc(sizeof(REGION));
     if (reg == NULL) return NULL;
@@ -16,11 +28,61 @@ REGION *createRegion(int id, char name[]) {
     strcpy(reg->name, name);
     reg->infected = 0;
     
-    // Inicialización de los nuevos campos
-    reg->count_individuos = 0;
-    // Se inicializa el array de IDs, asumiendo una población máxima inicial.
-    // El tamaño debería ser MAX_POPULATION o el número M de individuos del territorio (PDF).
-    reg->individuos_ids = (int *)calloc(MAX_POPULATION, sizeof(int)); 
+    reg->populationCount = 0;
+    reg->peopleIDs = (int *) calloc(MAX_POPULATION, sizeof(int)); 
     
     return reg;
+}
+
+// ------------------
+// For Hash Functions
+unsigned int hashFunction(int key) {
+    return (unsigned int)key % REGION_HASH_TABLE_SIZE;
+}
+
+REGION_HASH_TABLE* createRegionHashTable() {
+    REGION_HASH_TABLE *ht = (REGION_HASH_TABLE*)calloc(1, sizeof(REGION_HASH_TABLE));
+    return ht;
+}
+
+void insertRegionInHash(REGION_HASH_TABLE *ht, const REGION *region) {
+    if (!ht || !region) return;
+
+    unsigned int index = hashFunction(region->id);
+    REGION_NODE *new_node = (REGION_NODE*)malloc(sizeof(REGION_NODE));
+    if (!new_node) return;
+
+    new_node->data = *region;
+    new_node->next = ht->table[index];
+    ht->table[index] = new_node;
+    ht->count++;
+}
+
+REGION* searchRegionInHash(REGION_HASH_TABLE *ht, int region_id) {
+    if (!ht) return NULL;
+
+    unsigned int index = hashFunction(region_id);
+    REGION_NODE *current = ht->table[index];
+
+    while (current != NULL) {
+        if (current->data.id == region_id) {
+            return &current->data;
+        }
+        current = current->next;
+    }
+    return NULL;
+}
+
+void freeRegionInHash(REGION_HASH_TABLE *ht) {
+    if (!ht) return;
+    for (int i = 0; i < REGION_HASH_TABLE_SIZE; i++) {
+        RegionsCount = 0;
+        REGION_NODE *current = ht->table[i];
+        while (current != NULL) {
+            REGION_NODE *temp = current;
+            current = current->next;
+            free(temp);
+        }
+    }
+    free(ht);
 }
