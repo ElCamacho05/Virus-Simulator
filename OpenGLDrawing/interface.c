@@ -1,4 +1,4 @@
-#include "interfaceV2.h"
+#include "interface.h"
 #include <GL/glut.h>
 #include <stdio.h>
 #include "utils.h"

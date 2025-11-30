@@ -1,5 +1,5 @@
-#ifndef INTERFACEV2_H
-#define INTERFACEV2_H
+#ifndef INTERFACE_H
+#define INTERFACE_H
 
 #define WIDTH 500
 #define HEIGHT 500

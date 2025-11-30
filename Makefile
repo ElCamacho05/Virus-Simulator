@@ -20,8 +20,10 @@ TEST_TARGET = test_interface
 LIB_INTERFACE = libigl.a
 
 # Archivos de la interfaz (OpenGLDrawing/)
-INTERFACE_SRC = $(OPENGL_DIR)/interfaceV2.c
-INTERFACE_OBJ = $(OPENGL_DIR)/interfaceV2.o
+INTERFACE_SRC = $(OPENGL_DIR)/interface.c
+INTERFACE_OBJ = $(OPENGL_DIR)/interface.o
+UTILS_SRC = $(OPENGL_DIR)/utils.c
+UTILS_OBJ = $(OPENGL_DIR)/utils.o
 
 # Archivos de las clases (Clases/)
 CLASES_SRCS = $(CLASES_DIR)/Person.c $(CLASES_DIR)/Regions.c $(CLASES_DIR)/Virus.c
@@ -44,23 +46,26 @@ TEST_SRCS = test_interface.c
 TEST_OBJS = test_interface.o
 
 # Todos los objetos generados
-ALL_OBJS = $(INTERFACE_OBJ) $(CLASES_OBJS) $(ALGORITHMS_OBJS) $(MAIN_OBJS) $(EXAMPLE_OBJS) $(TEST_OBJS)
+ALL_OBJS = $(INTERFACE_OBJ) $(UTILS_OBJ) $(CLASES_OBJS) $(ALGORITHMS_OBJS) $(MAIN_OBJS) $(EXAMPLE_OBJS) $(TEST_OBJS)
 
 .PHONY: all lib main example test clean run run-main run-example run-test
 
 # --- Targets Principales ---
 
 # Target por defecto: Compila todas las aplicaciones
-all: $(MAIN_TARGET) $(EXAMPLE_TARGET) $(TEST_TARGET)
+all: $(MAIN_TARGET)
 
 # --- Librería de Interfaz (libigl.a) ---
 
 lib: $(LIB_INTERFACE)
 
-$(LIB_INTERFACE): $(INTERFACE_OBJ) $(CLASES_OBJS) $(ALGORITHMS_OBJS)
+$(LIB_INTERFACE): $(INTERFACE_OBJ) $(UTILS_OBJ) $(CLASES_OBJS) $(ALGORITHMS_OBJS)
 	$(AR) $(ARFLAGS) $@ $^
 
 $(INTERFACE_OBJ): $(INTERFACE_SRC) $(OPENGL_DIR)/interface.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(UTILS_OBJ): $(UTILS_SRC) $(OPENGL_DIR)/utils.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # --- Compilación de Clases ---
@@ -131,7 +136,4 @@ run-test: $(TEST_TARGET)
 
 clean:
 	rm -f $(ALL_OBJS) $(LIB_INTERFACE) $(MAIN_TARGET) $(EXAMPLE_TARGET) $(TEST_TARGET)
-	rm -rf $(CLASES_DIR)/*.o $(ALGORITHMS_DIR)/*.o $(OPENGL_DIR)/*.o# --- Limpieza ---
-
-clean:
-	rm -f $(ALL_OBJS) $(LIB_INTERFACE) $(MAIN_TARGET) $(EXAMPLE_TARGET) $(TEST_TARGET)
+	rm -rf $(CLASES_DIR)/*.o $(ALGORITHMS_DIR)/*.o $(OPENGL_DIR)/*.o

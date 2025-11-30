@@ -1,11 +1,12 @@
 #include <GL/glut.h>
+#include <math.h>
+#include <string.h>
 
 double PI =  3.1415926535898;
 
 
 void text(char *texto, float x, float y) {
-    
-    float l = glutBitmapLength(GLUT_BITMAP_HELVETICA_12, texto);
+    float l = glutBitmapLength(GLUT_BITMAP_HELVETICA_12, (const unsigned char *)texto);
     glRasterPos2f(x-(l/2.0), y);
 
     for (int i = 0; i < strlen(texto); i++) {
