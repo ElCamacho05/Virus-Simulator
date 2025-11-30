@@ -4,41 +4,33 @@
 #include <GL/glut.h>
 #include <math.h>
 
-// Clases (Estructuras de datos y lógica O(1))
+// Classes (Data structures and Logic)
 #include "Clases/Person.h"
 #include "Clases/Regions.h"
 #include "Clases/Virus.h"
 
-// Data retrieve (DAO_General.h provee la función load_initial_data)
+// Data retrieve (DAO_General.h provides the initial data reading)
 #include "DAO_General.h"
 
 // Drawing & Plotting
 #include "OpenGLDrawing/interface.h"
 
-// Algorithms (Se incluirá la lógica de la Tarea 2, 3, etc.)
+// Algorithms (Logic for the main purpose of the program)
 #include "Algorithms/Algorithms.h"
 
-// --- VARIABLES GLOBALES DEL SIMULADOR ---
-// El objeto BioSimData es el contenedor central de todos los datos (el DAO).
-BioSimData *GlobalData = NULL; 
+// General data container
+BIO_SIM_DATA *GlobalData = NULL; 
 int pause = 0;
 int simulation_day = 0;
 
-/*
-STRUCTS AND TYPES DEFINITION
-(SE ELIMINAN LAS DEFINICIONES DUPLICADAS DE REGION Y ADJREGION.
-DEBEN ESTAR SOLO EN Clases/Regions.h)
-*/
-
 // Prototipos de funciones
-void init_simulation_data(); // Función de inicialización de datos (reemplaza init())
+void init_simulation_data();
 void my_display(void);
 void my_keyboard(unsigned char key, int x, int y);
 void idle_func(void);
 
 // --- FUNCIÓN PRINCIPAL ---
 int main(int argc, char *argv[]) {
-    // 1. CARGA DE DATOS Y ESTABLECIMIENTO DEL DAO (Tarea 1 de Armando)
     init_simulation_data();
 
     if (GlobalData == NULL) {
@@ -53,15 +45,12 @@ int main(int argc, char *argv[]) {
     iglSetKeyboardFunc(my_keyboard);
     iglRun();
     
-    // Asegurar la liberación de memoria si el bucle iglRun termina
     free_biosim_data(GlobalData); 
     return 0;
 }
 
-// --- LÓGICA DE INICIALIZACIÓN DE DATOS (TAREA 1) ---
 void init_simulation_data() {
-    // 1. Llamada al DAO para cargar datos O(1)
-    // NOTA: Los nombres de archivo deben coincidir con los creados manualmente
+    // data loading
     GlobalData = load_initial_data(
         "cepas.txt", 
         "territorios.txt", 
