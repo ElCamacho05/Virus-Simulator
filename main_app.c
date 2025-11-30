@@ -15,14 +15,18 @@
 // Drawing & Plotting
 // #include "OpenGLDrawing/interface.h"
 #include "OpenGLDrawing/interface.h"
+#include "OpenGLDrawing/utils.h"
 
 // Algorithms (Logic for the main purpose of the program)
 #include "Algorithms/Algorithms.h"
 
+// Data repository for centralized variables for all of the components
+#include "dataRepository.h"
+
 // General data container
-BIO_SIM_DATA *GlobalData = NULL; 
-int pause = 0;
-int simulation_day = 0;
+// GlobalData = NULL; 
+// pause = 0;
+// simulation_day = 0;
 
 // Function prototypes
 void init_simulation_data();
@@ -42,19 +46,14 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-// it declares itself on interfaceV2.h, but the other library takes as it's own 
-void idle() {
-    printf(".");
-    glutPostRedisplay();
-}
 
 void init_simulation_data() {
     // Load initial data from CSV files
     GlobalData = load_initial_data(
-        "cepas.txt", 
-        "territorios.txt", 
-        "individuos.txt", 
-        "contactos.txt"
+        "Data/strains.txt", 
+        "Data/regions.txt", 
+        "Data/population.txt", 
+        "Data/contactlist.txt"
     );
 
     if (GlobalData != NULL) {
