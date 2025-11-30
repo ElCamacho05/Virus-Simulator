@@ -32,6 +32,9 @@ STRAIN* get_cepa_by_id(BIO_SIM_DATA *data, int id);
 PERSON* get_person_by_id(BIO_SIM_DATA *data, int id);
 REGION* get_region_by_id(BIO_SIM_DATA *data, int id);
 
+// Initialize drawing positions for regions and persons
+void initializePositions(BIO_SIM_DATA *data);
+
 // Save simulation state
 void save_contagion_history(BIO_SIM_DATA *data, int dia_simulacion);
 
