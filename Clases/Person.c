@@ -34,8 +34,11 @@ PERSON *createPerson(int id, char *name, int regionID, double initialDegree, dou
     nP->daysInfected = daysInfected;
 
     nP->status = HEALTH;
-    nP->actualStrainID = -1; 
+    nP->actualStrainID = -1;
+    nP->infectedBy = -1;
 
+    P_DRAW_UTILS dC = {{0.0, 0.0}};
+    nP->drawConf = dC;
 
     return nP;
 };

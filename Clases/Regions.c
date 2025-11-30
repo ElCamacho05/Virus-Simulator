@@ -30,7 +30,10 @@ REGION *createRegion(int id, char name[]) {
     
     reg->populationCount = 0;
     reg->peopleIDs = (int *) calloc(MAX_POPULATION, sizeof(int)); 
-    
+
+    R_DRAW_UTILS dC = {{0.0, 0.0}, 0.0};
+    reg->drawConf = dC;
+
     return reg;
 }
 

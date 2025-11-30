@@ -9,12 +9,19 @@
 extern int RegionsCount;
 
 // REGION structures
+typedef struct RegionDrawUtils {
+    double pos[2];
+    double radio;
+} R_DRAW_UTILS;
+
 typedef struct Region{
     int id;
     char name[20];
     int *peopleIDs;
     int populationCount;    
     int infected;
+
+    R_DRAW_UTILS drawConf;
 } REGION;
 
 typedef struct RegionNode { // HASH wrapper structure

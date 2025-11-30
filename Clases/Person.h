@@ -20,6 +20,11 @@ typedef enum {
 } HealthStatus;
 
 // PERSON structures
+
+typedef struct PersonDrawUtils {
+    double pos[2];
+} P_DRAW_UTILS;
+
 typedef struct Person{
     int id;
     char name[30];
@@ -33,8 +38,9 @@ typedef struct Person{
     HealthStatus status; 
     int actualStrainID;
     int daysInfected;
+    int infectedBy;
 
-    
+    P_DRAW_UTILS drawConf;
 } PERSON;
 
 typedef struct PersonNode { // HASH wrapper structure
