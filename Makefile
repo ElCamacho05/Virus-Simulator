@@ -34,8 +34,9 @@ ALGORITHMS_SRCS = $(ALGORITHMS_DIR)/Algorithms.c
 ALGORITHMS_OBJS = $(ALGORITHMS_DIR)/Algorithms.o
 
 # Archivos de la aplicación principal
-MAIN_SRCS = main_app.c DAO_General.c
-MAIN_OBJS = main_app.o DAO_General.o
+# AQUI AGREGAMOS dataRepository.c
+MAIN_SRCS = main_app.c DAO_General.c dataRepository.c
+MAIN_OBJS = main_app.o DAO_General.o dataRepository.o
 
 # Archivos de la aplicación de ejemplo
 EXAMPLE_SRCS = example_app.c
@@ -53,7 +54,7 @@ ALL_OBJS = $(INTERFACE_OBJ) $(UTILS_OBJ) $(CLASES_OBJS) $(ALGORITHMS_OBJS) $(MAI
 # --- Targets Principales ---
 
 # Target por defecto: Compila todas las aplicaciones
-all: $(MAIN_TARGET)
+all: $(MAIN_TARGET) $(EXAMPLE_TARGET) $(TEST_TARGET)
 
 # --- Librería de Interfaz (libigl.a) ---
 
@@ -88,13 +89,18 @@ $(ALGORITHMS_DIR)/Algorithms.o: $(ALGORITHMS_DIR)/Algorithms.c $(ALGORITHMS_DIR)
 
 main: $(MAIN_TARGET)
 
+# Vinculamos todos los objetos necesarios
 $(MAIN_TARGET): $(MAIN_OBJS) $(LIB_INTERFACE)
 	$(CC) $(CFLAGS) $(MAIN_OBJS) -L. -ligl $(LDFLAGS) -o $@
 
-main_app.o: main_app.c $(OPENGL_DIR)/interface.h
+main_app.o: main_app.c $(OPENGL_DIR)/interface.h dataRepository.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 DAO_General.o: DAO_General.c DAO_General.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Regla para compilar dataRepository
+dataRepository.o: dataRepository.c dataRepository.h DAO_General.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # --- Aplicación de Ejemplo (example_igl) ---
@@ -120,7 +126,6 @@ test_interface.o: test_interface.c $(OPENGL_DIR)/interface.h
 
 # --- Targets de Ejecución ---
 
-# Ejecuta el programa principal por defecto
 run: run-main
 
 run-main: $(MAIN_TARGET)

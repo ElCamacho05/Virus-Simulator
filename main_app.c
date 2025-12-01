@@ -18,7 +18,7 @@
 #include "OpenGLDrawing/utils.h"
 
 // Algorithms (Logic for the main purpose of the program)
-#include "Algorithms/Algorithms.h"
+#include "Algorithms.h"
 
 // Data repository for centralized variables for all of the components
 #include "dataRepository.h"

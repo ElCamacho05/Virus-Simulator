@@ -47,7 +47,6 @@ REGION *createRegion(int id, char name[]);
 
 // ------------------
 // For Hash Functions
-unsigned int hashFunction(int key);
 REGION_HASH_TABLE* createRegionHashTable();
 void insertRegionInHash(REGION_HASH_TABLE *ht, const REGION *region);
 REGION* searchRegionInHash(REGION_HASH_TABLE *ht, int region_id);

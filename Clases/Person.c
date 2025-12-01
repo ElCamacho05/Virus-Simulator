@@ -6,9 +6,7 @@
 
 // Other Classes libraries
 #include "Regions.h"
-#include "Algorithms.h"
-
-
+#include "../Algorithms/Algorithms.h"
 
 // PERSON variables
 int PopulationCount = 0;
@@ -53,7 +51,7 @@ PERSON_HASH_TABLE* createPersonHashTable() {
 void insertPersonInHash(PERSON_HASH_TABLE *ht, const PERSON *person) {
     if (!ht || !person) return;
 
-    unsigned int index = hashFunction(person->id);
+    unsigned int index = hashFunction(person->id, PERSON_HASH_TABLE_SIZE);
     PERSON_NODE *new_node = (PERSON_NODE*)malloc(sizeof(PERSON_NODE));
     if (!new_node) return;
 
@@ -66,7 +64,7 @@ void insertPersonInHash(PERSON_HASH_TABLE *ht, const PERSON *person) {
 PERSON* searchPersonInHash(PERSON_HASH_TABLE *ht, int person_id) {
     if (!ht) return NULL;
 
-    unsigned int index = hashFunction(person_id);
+    unsigned int index = hashFunction(person_id, PERSON_HASH_TABLE_SIZE);
     PERSON_NODE *current = ht->table[index];
 
     while (current != NULL) {

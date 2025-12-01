@@ -6,9 +6,7 @@
 #include <string.h>
 
 // Other Classes libraries
-#include "Person.h"
-#include "Algorithms.h"
-
+#include "../Algorithms/Algorithms.h"
 // STRAIN Variables
 int virusesCount = 0;
 
@@ -32,7 +30,7 @@ STRAIN_HASH_TABLE* createStrainHashTable() {
 void insertStrainInHash(STRAIN_HASH_TABLE *ht, const STRAIN *strain) {
     if (!ht || !strain) return;
 
-    unsigned int index = hashFunction(strain->id);
+    unsigned int index = hashFunction(strain->id, VIRUS_HASH_TABLE_SIZE);
     STRAIN_NODE *new_node = (STRAIN_NODE*)malloc(sizeof(STRAIN_NODE));
     if (!new_node) return;
 
@@ -45,7 +43,7 @@ void insertStrainInHash(STRAIN_HASH_TABLE *ht, const STRAIN *strain) {
 STRAIN* searchStrainInHash(STRAIN_HASH_TABLE *ht, int strain_id) {
     if (!ht) return NULL;
 
-    unsigned int index = hashFunction(strain_id);
+    unsigned int index = hashFunction(strain_id, VIRUS_HASH_TABLE_SIZE);
     STRAIN_NODE *current = ht->table[index];
 
     while (current != NULL) {

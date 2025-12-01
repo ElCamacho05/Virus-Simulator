@@ -7,8 +7,7 @@
 
 // Other Classes libraries
 #include "Person.h"
-#include "Algorithms.h"
-
+#include "../Algorithms/Algorithms.h"
 // REGION variables
 int RegionsCount;
 
@@ -39,10 +38,6 @@ REGION *createRegion(int id, char name[]) {
 
 // ------------------
 // For Hash Functions
-unsigned int hashFunction(int key) {
-    return (unsigned int)key % REGION_HASH_TABLE_SIZE;
-}
-
 REGION_HASH_TABLE* createRegionHashTable() {
     REGION_HASH_TABLE *ht = (REGION_HASH_TABLE*)calloc(1, sizeof(REGION_HASH_TABLE));
     return ht;
@@ -51,7 +46,7 @@ REGION_HASH_TABLE* createRegionHashTable() {
 void insertRegionInHash(REGION_HASH_TABLE *ht, const REGION *region) {
     if (!ht || !region) return;
 
-    unsigned int index = hashFunction(region->id);
+    unsigned int index = hashFunction(region->id, REGION_HASH_TABLE_SIZE);
     REGION_NODE *new_node = (REGION_NODE*)malloc(sizeof(REGION_NODE));
     if (!new_node) return;
 
@@ -64,7 +59,7 @@ void insertRegionInHash(REGION_HASH_TABLE *ht, const REGION *region) {
 REGION* searchRegionInHash(REGION_HASH_TABLE *ht, int region_id) {
     if (!ht) return NULL;
 
-    unsigned int index = hashFunction(region_id);
+    unsigned int index = hashFunction(region_id, REGION_HASH_TABLE_SIZE);
     REGION_NODE *current = ht->table[index];
 
     while (current != NULL) {
