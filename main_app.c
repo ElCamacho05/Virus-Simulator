@@ -30,6 +30,9 @@
 
 // Function prototypes
 void init_simulation_data();
+void my_display(void);
+void my_keyboard(unsigned char key, int x, int y);
+void idle_func(void); // CLAVE: Controla la simulación diaria
 
 // Main entry point
 int main(int argc, char *argv[]) {
@@ -41,6 +44,11 @@ int main(int argc, char *argv[]) {
     }
 
     init(&argc, argv);
+
+    // 3. Registro de Callbacks
+    glutDisplayFunc(my_display);
+    glutIdleFunc(idle_func); // Para el avance de la simulación (Tarea 3)
+    glutKeyboardFunc(my_keyboard); // Para salir/pausar
 
     free_biosim_data(GlobalData);
     return 0;
@@ -60,11 +68,41 @@ void init_simulation_data() {
         printf("Simulator initialized. Population loaded.\n");
         
         // TODO: Set initial outbreaks (Task 2)
-        // establish_initial_outbreak(GlobalData, 10, 1);
+        establish_initial_outbreak(GlobalData, 10, 1);
         
         // TODO: Initialize strain clustering (Task 7)
-        // cluster_strains(GlobalData);
+        //cluster_strains(GlobalData);
     }
 }
 
+void my_display(void) {
+    // Aquí iría la lógica para dibujar el estado actual del simulador
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    // ... (Lógica de dibujo de regiones, personas infectadas/sanas) ...
+    glutSwapBuffers();
+}
 
+void my_keyboard(unsigned char key, int x, int y) {
+    // Se asume que GlobalData->pause y GlobalData->simulation_day existen via dataRepository.h
+    
+    if (key == 27) { // ESC
+        free_biosim_data(GlobalData); 
+        exit(0); 
+    }
+    if (key == 'p' || key == 'P') {
+        // Alternar el estado de pausa (asumiendo que 'pause' existe en dataRepository)
+        // pause = !pause; 
+    }; 
+}
+
+void idle_func(void) {
+    // Esta función controla el avance del tiempo de la simulación
+    // if (!pause && GlobalData) {
+    if (GlobalData) {
+        // Tarea 3: Simulación probabilística diaria
+        simulation_day++;
+        run_daily_simulation(GlobalData, simulation_day); 
+        
+        glutPostRedisplay(); // Solicita el redibujo para actualizar la visualización
+    }
+}

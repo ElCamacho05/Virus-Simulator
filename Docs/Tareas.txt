@@ -1,10 +1,10 @@
 Proyecto DAA
 to do:
-	+++ (ARMANDO) (Punto 1) DAO para datos (Data Access Object, objeto o clase para obtener datos de una base de datos, en este caso para importar los datos de un txt que hagamos para los datos de las personas, virus, cepas, regiones, etc y guardar la informacion en estructuras
-	+++ (ARMANDO) Generar nuestra primaria de datos, un 10-20% de los datos requeridos finales seran suficientes para esta fase
-	+++ (CAMACHO) Completar libreria interface.c para que tenga todos los elementos que se vayan a usar en la aplicacion principal
+	+++ LISTO (ARMANDO) (Punto 1) DAO para datos (Data Access Object, objeto o clase para obtener datos de una base de datos, en este caso para importar los datos de un txt que hagamos para los datos de las personas, virus, cepas, regiones, etc y guardar la informacion en estructuras
+	+++ LISTO (ARMANDO) Generar nuestra primaria de datos, un 10-20% de los datos requeridos finales seran suficientes para esta fase
+	+++ LISTO (CAMACHO) Completar libreria interface.c para que tenga todos los elementos que se vayan a usar en la aplicacion principal
 	+++ Logica del programa
-		--- (ARMANDO) (Punto 2) establecer brotes aleatorios iniciales (10 personas)
+		--- LISTO (ARMANDO) (Punto 2) establecer brotes aleatorios iniciales (10 personas)
 		--- (ARMANDO) (Punto 3) simulacion de contagios diarios entre personas (probabilistica)
 		--- (CAMACHO) (Punto 4) algoritmo para controlar la epidemia (simular cuarentenas para reducir riesgos)
 				se podria dividir en diferentes zonas de aislamiento, en cuarentena para evitar los contagios, las personas que ya estan contagiados o tuvieron contacto con 					personas infercatas(o con sintomas a la enfermedad)
