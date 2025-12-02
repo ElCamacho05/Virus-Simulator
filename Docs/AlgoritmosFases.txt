@@ -9,7 +9,56 @@ Regiones:
 	estructura
 	
 	¿dirigido o bidireccional?
-	
+
+Fase
+	Accion
+		Algoritmo
+		Complejidad
+		Justificación
+Fase 1
+	Carga
+		QuickSort, MergeSort, HeapSort
+		O(NlogN)
+		Cumple requisito explícito de variedad.
+
+Fase 2.
+	Brotes:
+		BFS (Búsqueda en Anchura)
+		O(V+E)
+		Detecta componentes conexas eficientemente. (Peor caso O(N2) en grafo denso, pero V+E en disperso).
+
+Fase 3
+	Simulación
+		Min-Heap (Cola de Prioridad)
+		O(NlogN)
+		Gestiona eventos de recuperación/muerte ordenados por día sin barridos innecesarios.
+Fase 4
+	Aislamiento
+		Greedy (Voraz)
+		O(NlogN)
+		Ordenar por riesgo (Quicksort) y aislar a los top K.
+Fase 5
+	Fase Rutas
+		Dijkstra (con Heap)
+		O(ElogV)
+		Encuentra camino de mayor probabilidad.
+Fase 6
+	Contención
+		Prim (con Heap)
+		O(ElogV)
+		Red mínima para cortar la infección.
+Fase 7
+	Clustering
+		Trie
+		O(N⋅L)
+		Agrupamiento por prefijos de ADN/Nombre.
+Fase 8
+	Consulta
+		Hash Table
+		O(1)
+		Acceso instantáneo por ID.
+
+// DEPRECATED
 Algoritmos:
 	Fase 1: Inicializacion y Analisis de Datos
 		quicksort: ordenar riesgo (DESC)
