@@ -9,3 +9,4 @@ Clases/Regions.o
 Clases/Virus.o
 OpenGLDrawing/interface.o
 OpenGLDrawing/utils.o
+dataRepository.o
