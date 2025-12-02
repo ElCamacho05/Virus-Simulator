@@ -13,6 +13,11 @@
 BIO_SIM_DATA* createBiosimData(int max_i, int max_t) {
     BIO_SIM_DATA *data = (BIO_SIM_DATA*)malloc(sizeof(BIO_SIM_DATA));
     if (!data) return NULL;
+
+    data->eventQueue = NULL;
+    data->activeInfectedIDs = NULL;
+    data->infectedCount = 0;
+    
     data->max_individuos = max_i;
     data->max_territorios = max_t;
 
@@ -102,6 +107,8 @@ BIO_SIM_DATA* load_initial_data(const char *cepas_f, const char *terr_f, const c
                 p.infectedBy = -1;
                 P_DRAW_UTILS drawConf = {{0.0, 0.0}};
                 p.drawConf = drawConf;
+                p.contacts = NULL;
+                p.numContacts = 0;
                 insertPersonInHash(data->persons_table, &p);
                 person_count++;
             }
@@ -112,11 +119,32 @@ BIO_SIM_DATA* load_initial_data(const char *cepas_f, const char *terr_f, const c
         fprintf(stderr, "!!!Warning: Persons file '%s' not found. Continuing...\n", ind_f);
     }
 
-    // TODO: Load contacts (person-to-person graph)
+    // Load Contact list: persona1,persona2
     if (cont_f) {
         FILE *fc = fopen(cont_f, "r");
         if (fc) {
+            char line[256];
+            printf(" / Loading contacts from '%s'...\n", cont_f);
+            int contact_count = 0;
+
+            while (fgets(line, sizeof(line), fc)) {
+                int id1, id2;
+
+                if (sscanf(line, "%d,%d", &id1, &id2) == 2) {
+                    PERSON *p1 = searchPersonInHash(data->persons_table, id1);
+                    PERSON *p2 = searchPersonInHash(data->persons_table, id2);
+
+                    if (p1 && p2) {
+                        addContact(p1, p2);
+                        addContact(p2, p1); 
+                        contact_count++;
+                    }
+                }
+            }
             fclose(fc);
+            printf(" / Loaded %d connections (edges).\n", contact_count);
+        } else {
+            fprintf(stderr, "!!!Warning: Contacts file '%s' not found.\n", cont_f);
         }
     }
 

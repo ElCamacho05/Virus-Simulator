@@ -20,6 +20,13 @@ typedef enum {
 } HealthStatus;
 
 // PERSON structures
+struct Person;
+
+typedef struct ContactNode {
+    struct Person *contact; // Puntero directo a la persona contactada (Grafo)
+    struct ContactNode *next;
+    double interactionProb; // Probabilidad de contacto (opcional, por defecto 1.0 o aleatorio)
+} ContactNode;
 
 typedef struct PersonDrawUtils {
     double pos[2];
@@ -39,6 +46,9 @@ typedef struct Person{
     int actualStrainID;
     int daysInfected;
     int infectedBy;
+
+    ContactNode *contacts; 
+    int numContacts;
 
     P_DRAW_UTILS drawConf;
 } PERSON;
@@ -65,7 +75,7 @@ PERSON Functions
 // ------------------
 // Basic Functions
 PERSON *createPerson(int id, char *name, int regionID, double initialDegree, double initialRisk, int daysInfected);
-
+void addContact(PERSON *p, PERSON *contact);
 // ------------------
 // For Hash Functions
 PERSON_HASH_TABLE* createPersonHashTable();

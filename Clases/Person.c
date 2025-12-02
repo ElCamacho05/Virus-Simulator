@@ -35,11 +35,34 @@ PERSON *createPerson(int id, char *name, int regionID, double initialDegree, dou
     nP->actualStrainID = -1;
     nP->infectedBy = -1;
 
+    nP->contacts = NULL;
+    nP->numContacts = 0;
+
     P_DRAW_UTILS dC = {{0.0, 0.0}};
     nP->drawConf = dC;
 
     return nP;
 };
+
+void addContact(PERSON *p, PERSON *contact) {
+    if (!p || !contact) return;
+
+    // Verificar si ya existe (opcional, para evitar duplicados en grafos no dirigidos si el archivo los repite)
+    ContactNode *curr = p->contacts;
+    while(curr) {
+        if(curr->contact->id == contact->id) return;
+        curr = curr->next;
+    }
+
+    ContactNode *newNode = (ContactNode*)malloc(sizeof(ContactNode));
+    if (!newNode) return;
+
+    newNode->contact = contact;
+    newNode->interactionProb = 1.0; // Valor base, podría ser aleatorio o del archivo
+    newNode->next = p->contacts;
+    p->contacts = newNode;
+    p->numContacts++;
+}
 
 // ------------------
 // For Hash Functions
@@ -80,6 +103,15 @@ void freePersonInHash(PERSON_HASH_TABLE *ht) {
     if (!ht) return;
     for (int i = 0; i < PERSON_HASH_TABLE_SIZE; i++) {
         PERSON_NODE *current = ht->table[i];
+        
+        PERSON_NODE *temp = current;
+        ContactNode *c = temp->data.contacts;
+        while(c) {
+            ContactNode *t_c = c;
+            c = c->next;
+            free(t_c);
+        }
+        
         while (current != NULL) {
             PERSON_NODE *temp = current;
             current = current->next;
