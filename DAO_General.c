@@ -54,7 +54,7 @@ BIO_SIM_DATA* load_initial_data(const char *cepas_f, const char *terr_f, const c
         int cepa_count = 0;
         while (fgets(line, sizeof(line), fp)) {
             STRAIN s = {0};
-            if (sscanf(line, "%d,%19[^,],%lf,%lf,%lf", &s.id, s.name, &s.beta, &s.caseFatalityRatio, &s.recovery) >= 1) {
+            if (sscanf(line, "%d,%19[^,],%lf,%lf,%lf,%lf", &s.id, s.name, &s.beta, &s.caseFatalityRatio, &s.recovery, &s.mutationProb) >= 1) {
                 insertStrainInHash(data->cepas_hash_table, &s);
                 cepa_count++;
             }

@@ -12,7 +12,7 @@ to do:
 		--- (CAMACHO) (Punto 6) obtener la mejor ruta para: (PREGUNTAR)
 			ooo tener en cuarentena a los infectados (mas suceptibles a contagiar) 
 			ooo vacunar a la gente (mas suceptibles de ser contagiados)
-		--- (ARMANDO) (Punto 7) Agrupar cepas por estructuras de nombre (PREGUNTAR)
+		--- LISTO(ARMANDO) (Punto 7) Agrupar cepas por estructuras de nombre (PREGUNTAR)
 		--- (ARMANDO) (Punto 8 )Control de historial de contagios con referencia a todos los datos
 			se puede guardar en una bd (un documento), en el cual se puede buscar por numero de paciente o algo asi.
 		

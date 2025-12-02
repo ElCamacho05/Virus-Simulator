@@ -7,6 +7,8 @@
 #include <time.h>
 #include <stdbool.h>
 #include <string.h>
+#include <ctype.h>
+
 #include "Clases/Person.h"
 #include "Clases/Virus.h"
 #include "../DAO_General.h"
@@ -15,6 +17,8 @@
 // TYPES OF EVENTS (for patients and non-patients)
 #define EVENT_RECOVERY 1
 #define EVENT_DEATH 2
+
+extern STRAIN* mutate_strain(STRAIN *parent, int new_id);
 
 unsigned int hashFunction(int key, int size) {
     return (unsigned int)key % size;
@@ -219,14 +223,13 @@ void run_daily_simulation(BIO_SIM_DATA *data, int dia_actual) {
         int spreader_id = data->activeInfectedIDs[i];
         PERSON *spreader = get_person_by_id(data, spreader_id);
         
-        // Seguridad: si se curó justo hoy o no existe, saltar
         if (!spreader || spreader->status != INFECTED) continue;
 
-        // Obtener datos del virus que porta
         STRAIN *virus = get_cepa_by_id(data, spreader->actualStrainID);
         if (!virus) continue;
 
         // 2. Iterar sobre sus contactos directos (Lista de Adyacencia)
+        // Se asume que PERSON tiene un campo 'contacts' (ContactNode*)
         ContactNode *contactoActual = spreader->contacts;
         
         while (contactoActual != NULL) {
@@ -235,39 +238,68 @@ void run_daily_simulation(BIO_SIM_DATA *data, int dia_actual) {
             // Solo intentamos contagiar si la persona está SANA
             if (target->status == HEALTH) {
                 
-                // Cálculo de Probabilidad:
-                // Factor Viral (Beta) * Factor de Contacto (si lo hubiera) * Aleatoriedad
-                // Aquí usamos beta directo. Se puede multiplicar por contactoActual->interactionProb si lo usas.
                 double probabilidadContagio = virus->beta;
 
                 if (((double)rand() / RAND_MAX) < probabilidadContagio) {
                     // --- ¡NUEVO CONTAGIO CONFIRMADO! ---
+                    
+                    int finalStrainID = virus->id; // Declarar aquí para scope correcto
+
+                    // === LÓGICA DE MUTACIÓN ===
+                    if (((double)rand() / RAND_MAX) < virus->mutationProb) {
+                        static int mutation_id_counter = 100; 
+                        mutation_id_counter++;
+
+                        STRAIN *mutant = mutate_strain(virus, mutation_id_counter);
+                        
+                        if (mutant) {
+                            printf("  [🧬 MUTACIÓN] Cepa %s mutó a -> %s (ID: %d)\n", virus->name, mutant->name, mutant->id);
+                            
+                            // Guardar en DAO
+                            insertStrainInHash(data->cepas_hash_table, mutant);
+                            
+                            // Guardar en TRIE (Limpieza de nombre)
+                            extern struct TrieNode *strain_trie_root;
+                            if (strain_trie_root) {
+                                char cleanName[50];
+                                int k = 0;
+                                for (int j = 0; mutant->name[j] != '\0' && k < 49; j++) {
+                                    char c = mutant->name[j];
+                                    if (isalpha(c)) {
+                                        cleanName[k++] = tolower(c);
+                                    }
+                                }
+                                cleanName[k] = '\0';
+                                
+                                // Usar cleanName (ahora sí se usa)
+                                insert(strain_trie_root, cleanName); 
+                            }
+
+                            finalStrainID = mutant->id; // Actualizar ID final
+                            free(mutant); // Liberar temp
+                        }
+                    }
 
                     // A. Actualizar Estado
                     target->status = INFECTED;
-                    target->actualStrainID = virus->id;
+                    target->actualStrainID = finalStrainID; // Usar variable ya declarada
                     target->daysInfected = 0;
-                    target->infectedBy = spreader->id; // Guardamos quién lo contagió (Trazabilidad)
+                    target->infectedBy = spreader->id; 
 
-                    // B. Agregar a la lista de propagadores (para contagiar mañana)
+                    // B. Agregar a la lista de propagadores
                     add_to_active_infected(data, target->id);
                     
-                    // printf("  [☣️ CONTAGIO] %s contagió a %s (Cepa: %s)\n", spreader->name, target->name, virus->name);
-
-                    // C. Calcular su Destino (Recuperación o Muerte) y Agendar en el Heap
-                    // Duración estimada basada en el virus (recovery rate * 100 es un ejemplo, adáptalo a tus datos)
+                    // C. Calcular su Destino (Recuperación o Muerte)
                     int duracion = (int)(virus->recovery * 100); 
-                    if (duracion < 2) duracion = 5; // Mínimo 5 días
+                    if (duracion < 2) duracion = 5; 
                     
                     int dia_evento = dia_actual + duracion;
                     
-                    // Determinar si morirá o se recuperará
                     int tipo_evento = EVENT_RECOVERY;
                     if (((double)rand() / RAND_MAX) < virus->caseFatalityRatio) {
                         tipo_evento = EVENT_DEATH;
                     }
 
-                    // Insertar evento futuro en el Min-Heap (O(log N))
                     insertMinHeap(data->eventQueue, target->id, (double)dia_evento, tipo_evento);
                 }
             }
@@ -276,11 +308,11 @@ void run_daily_simulation(BIO_SIM_DATA *data, int dia_actual) {
             contactoActual = contactoActual->next;
         }
         
-        // Aumentar contador de días del infectado actual (opcional, ya que el Heap maneja el final)
+        // Aumentar contador de días del infectado actual
+        // Ahora está DENTRO del bucle for, por lo que 'spreader' es visible
         spreader->daysInfected++;
     }
 }
-
 
 MinHeap* createMinHeap(int capacity) {
     MinHeap* heap = (MinHeap*)malloc(sizeof(MinHeap));
@@ -375,9 +407,31 @@ void freeMinHeap(MinHeap* heap) {
             TRIE
 --------------------------------
 */
+//Declaracion global para la raiz del trie
+struct TrieNode *strain_trie_root = NULL;
 
-void cluster_strains_by_name(BIO_SIM_DATA *data) {
+void cluster_strains(BIO_SIM_DATA *data) {
     // Implementación de la construcción del Árbol Trie (O(N*L))
-    (void)data;
-    printf("[Tarea 7] Clustering inicializado. Construcción del Trie pendiente.\n");
+    if (!data || !data->cepas_hash_table) return;
+
+    // Se inicializa la raiz del TRIE (en caso de que no exista)
+    if(strain_trie_root == NULL){
+        strain_trie_root = createNode();
+    }
+    printf("\n[Tarea 7] Construyendo el arbol TRIE para su clasificacion de cepas....\n");
+
+    // Interacion sobre la tabla hash de las cepas
+    for(int i=0; i<VIRUS_HASH_TABLE_SIZE; i++){
+        STRAIN_NODE *strain_node = data->cepas_hash_table->table[i];
+
+        while(strain_node != NULL){
+            STRAIN *s =&strain_node->data;
+
+            insert(strain_trie_root, s->name);
+
+            strain_node = strain_node->next;
+        }
+    }
+
+    printf("\n[Tarea 7] Construyendo del TRIE completada. %d cepas clasificadas\n", data->cepas_hash_table->count);
 }

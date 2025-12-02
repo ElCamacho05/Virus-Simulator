@@ -4,6 +4,8 @@
 // General Libraries
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
+#include <ctype.h>
 
 // Other Classes libraries
 #include "../Algorithms/Algorithms.h"
@@ -83,7 +85,23 @@ void insert(struct TrieNode *root, const char *key) {
     if (virusesCount >= 50) return; 
     struct TrieNode *current = root;
     for (int i = 0; i < strlen(key); i++) {
-        int index = key[i] - 'a';
+        char c = key[i];
+        int index =-1;
+
+        // Lógica segura para calcular el índice
+        if (c >= 'a' && c <= 'z') {
+            index = c - 'a';
+        } else if (c >= 'A' && c <= 'Z') {
+            index = c - 'A'; // Convertir mayúscula a índice 0-25
+        } else if (c == '-') {
+            continue; // Ignorar guiones (o podrías mapearlo a un índice especial si ampliaras el alfabeto)
+        } else {
+            continue; // Ignorar cualquier otro carácter no válido
+        }
+
+        // Validación extra de seguridad
+        if (index < 0 || index >= 26) continue;
+
         if (current->children[index] == NULL) {
             current->children[index] = createNode();
         }
@@ -142,4 +160,31 @@ struct TrieNode *deletehelper(struct TrieNode *root, const char *key, int depth)
 
 void deletekey(struct TrieNode *root, const char *key) {
     deletehelper(root, key, 0);
+}
+
+
+STRAIN* mutate_strain(STRAIN *parent, int new_id) {
+    STRAIN *new_s = (STRAIN*)malloc(sizeof(STRAIN));
+    if (!new_s) return NULL;
+
+    new_s->id = new_id;
+
+    // GENERAR NOMBRE: Si padre es "A", hijo será "A" + letra random (ej: "AB")
+    // Esto cumple con la estructura requerida para el Trie.
+    char suffix = 'A' + (rand() % 26);
+    printf(new_s->name, 20, "%s%c", parent->name, suffix);
+
+    // MUTAR ESTADÍSTICAS (Variación aleatoria del +/- 10%)
+    double variation = 0.9 + ((rand() % 20) / 100.0); 
+    
+    new_s->beta = parent->beta * variation;
+    new_s->caseFatalityRatio = parent->caseFatalityRatio * variation;
+    new_s->recovery = parent->recovery; // La recuperación suele ser similar
+    new_s->mutationProb = parent->mutationProb; // Hereda la inestabilidad
+
+    // Limites lógicos
+    if (new_s->beta > 1.0) new_s->beta = 1.0;
+    if (new_s->caseFatalityRatio > 1.0) new_s->caseFatalityRatio = 1.0;
+
+    return new_s;
 }

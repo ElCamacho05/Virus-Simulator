@@ -56,6 +56,6 @@ void init_simulation_data() {
         establish_initial_outbreak(GlobalData, 10, 1);
         
         // TODO: Initialize strain clustering (Task 7)
-        //cluster_strains(GlobalData);
+        cluster_strains(GlobalData);
     }
 }

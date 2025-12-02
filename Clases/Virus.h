@@ -24,6 +24,7 @@ typedef struct Strain{ // MAIN structure
     double beta; 
     double caseFatalityRatio;
     double recovery;
+    double mutationProb;
 } STRAIN;
 
 typedef struct StrainNode { // HASH wrapper structure
