@@ -1,7 +1,9 @@
 #include "interface.h"
 #include <GL/glut.h>
 #include <stdio.h>
+
 #include "utils.h"
+#include "Algorithms.h"
 #include "DAO_General.h"
 #include "dataRepository.h"
 #include "Regions.h"
@@ -30,12 +32,15 @@ void init(int *argc, char *argv[]) {
     glClearColor(0.2, 0.2, 0.4, 1.0); // navy blue
 
     /* Graphics info */
-    const GLubyte* vendor = glGetString(GL_VENDOR);
-    const GLubyte* renderer = glGetString(GL_RENDERER);
-    const GLubyte* version = glGetString(GL_VERSION);
-    printf("VENDOR: %s\n", vendor);
-    printf("RENDERER: %s\n", renderer);
-    printf("VERSION: %s\n", version);
+    // const GLubyte* vendor = glGetString(GL_VENDOR);
+    // const GLubyte* renderer = glGetString(GL_RENDERER);
+    // const GLubyte* version = glGetString(GL_VERSION);
+    // if (vendor && renderer && version) {
+    //     printf("VENDOR: %s\n", vendor);
+    //     printf("RENDERER: %s\n", renderer);
+    //     printf("VERSION: %s\n", version);
+    // }
+    
 
     glutDisplayFunc(display);
     glutIdleFunc(idle);
@@ -49,13 +54,7 @@ void display() {
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-
-    /* Draw test circle at origin */
-    // glColor3f(1.0, 1.0, 1.0);
-    // circle(50.0, 30, 1.0, 1.0, 1.0, 1.0);
     
-
-
     drawRegions(GlobalData);
 
     glutSwapBuffers();
@@ -66,12 +65,25 @@ void drawRegions(BIO_SIM_DATA *data) {
     REGION_HASH_TABLE *reg = data->regions_table;
     PERSON_HASH_TABLE *pop = data->persons_table;
     // Draw population
+    float r = 0.0, g = 0.0, b = 0.0, alpha = 1.0;
     for (int i = 0; i< PERSON_HASH_TABLE_SIZE; i++) {
         PERSON_NODE *pN = pop->table[i];
         while (pN) {
+            if (pN->data.status == HEALTH) {
+                r = 0.0; g = 1.0, b = 0.0;
+            }
+            else if(pN->data.status == INFECTED) {
+                r = 1.0; g = 0.0; b = 0.0;
+            }
+            else if(pN->data.status == IMMUNE) {
+                r = 0.0; g = 0.0; b = 1.0;
+            }
+            else if(pN->data.status == DEATH) {
+                glColor3f(0.0, 0.0, 0.0);
+            }
             glPushMatrix();
                 glTranslatef(pN->data.drawConf.pos[X], pN->data.drawConf.pos[Y], 0.0);
-                circle(3.0, 36, 1.0, 0.0, 1.0, 1.0);
+                circle(3.0, 36, r, g, b, alpha);
             glPopMatrix();
             pN = pN->next;
         }
@@ -92,7 +104,16 @@ void drawRegions(BIO_SIM_DATA *data) {
 }
 
 void idle() {
-    glutPostRedisplay();
+    if (GlobalData && !pause) {
+        updateTime();
+        int actualDay = (int)(elapsedTime/1000/secondsPerDay);
+        if (actualDay > simulation_day) {
+            simulation_day++;
+            run_daily_simulation(GlobalData, simulation_day); 
+        }
+        
+    }
+    glutPostRedisplay(); // Solicita el redibujo para actualizar la visualización
 }
 
  void reshape(int w, int h)
