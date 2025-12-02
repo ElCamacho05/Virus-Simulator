@@ -108,6 +108,7 @@ void idle() {
         updateTime();
         int actualDay = (int)(elapsedTime/1000/secondsPerDay);
         if (actualDay > simulation_day) {
+            printf("Simulando dia %d.\n",actualDay);
             simulation_day++;
             run_daily_simulation(GlobalData, simulation_day); 
         }
@@ -135,18 +136,6 @@ void idle() {
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 }
-
-
-// void reshape(int w, int h)
-// {
-// 	glViewport (0, 0, (GLsizei) w, (GLsizei) h); // establecer la vista a todo
-//    	glMatrixMode (GL_PROJECTION); // usar la matriz de proyección
-//    	glLoadIdentity (); // y cargarla
-//    	// establecer a toda la pantalla
-//    	// gluOrtho2D (0.0, (GLdouble) w, 0.0, (GLdouble) h);
-//     // glMatrixMode(GL_MODELVIEW);
-
-// }
 
 void keyboard(unsigned char key, int x, int y) {
     if (key == 27)
