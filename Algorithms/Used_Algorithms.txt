@@ -1,0 +1,2 @@
+BPA: Aux. algorithm for zone detection
+COUNTING SORT: For easily initialization of particular graphics data
