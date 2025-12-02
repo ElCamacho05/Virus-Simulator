@@ -79,7 +79,7 @@ void drawRegions(BIO_SIM_DATA *data) {
                 r = 0.0; g = 0.0; b = 1.0;
             }
             else if(pN->data.status == DEATH) {
-                glColor3f(0.0, 0.0, 0.0);
+                r = 0.0; g = 0.0; b = 0.0;
             }
             glPushMatrix();
                 glTranslatef(pN->data.drawConf.pos[X], pN->data.drawConf.pos[Y], 0.0);
@@ -99,8 +99,6 @@ void drawRegions(BIO_SIM_DATA *data) {
             rN = rN->next;
         }
     }
-
-    
 }
 
 void idle() {

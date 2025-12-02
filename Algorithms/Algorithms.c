@@ -94,7 +94,8 @@ void analyze_connectivity_bfs(BIO_SIM_DATA *data, int start_person_id) {
 }
 
 void add_to_active_infected(BIO_SIM_DATA *data, int person_id) {
-    if (data->infectedCount < data->max_individuos) {
+    printf("[INFECTED] - Person %d is now infected!!!\n", person_id);
+    if (data->activeInfectedIDs && data->infectedCount < data->max_individuos) {
         data->activeInfectedIDs[data->infectedCount++] = person_id;
     }
 }
@@ -143,7 +144,6 @@ void establish_initial_outbreak(BIO_SIM_DATA *data, int num_brotes, int cepa_id)
 
             // 1. Agregar a lista de propagadores activos
             add_to_active_infected(data, p->id);
-            printf("[INFECTED] - Person %d is now infected!!!\n", p->id);
 
             // 2. Calcular cuándo se recupera o muere (Lógica de Eventos)
             // Usamos la tasa de recuperación del virus para predecir el día
@@ -177,59 +177,109 @@ void establish_initial_outbreak(BIO_SIM_DATA *data, int num_brotes, int cepa_id)
 // I = Infectados, K = Contactos promedio, E = Eventos de hoy
 void run_daily_simulation(BIO_SIM_DATA *data, int dia_actual) {
     
+    // ============================================================
     // PARTE 1: PROCESAR EVENTOS DEL DÍA (Heap) - O(E log N)
+    // ============================================================
     // Sacamos del heap a todos los que les "toca" recuperarse o morir hoy
+    
     while (!isHeapEmpty(data->eventQueue)) {
-        // Miramos el tope sin sacar
+        // Miramos el tope sin sacar para ver si la fecha ya llegó
         if (data->eventQueue->array[0].value > dia_actual) {
-            break; // El evento más próximo es en el futuro, terminamos.
+            break; // El evento más próximo es en el futuro, terminamos por hoy.
         }
 
         // Sacamos el evento de hoy
         HeapNode event = extractMinHeap(data->eventQueue);
         PERSON *p = get_person_by_id(data, event.id);
 
+        // Solo procesamos si la persona sigue infectada (por si hubo lógica extraña)
         if (p && p->status == INFECTED) {
             if (event.type == EVENT_DEATH) {
                 p->status = DEATH;
-                printf("[EVENT] - Persona %d falleció.\n", p->id);
+                printf("  [DECESO] Persona %d (%s) ha fallecido.\n", p->id, p->name);
             } else {
                 p->status = IMMUNE;
-                printf("[EVENT] - Persona %d se recuperó.\n", p->id);
+                printf("  [RECUPERADO] Persona %d (%s) es ahora inmune.\n", p->id, p->name);
             }
-            // Ya no contagia, lo sacamos de la lista activa
+            
             remove_from_active_infected(data, p->id);
         }
     }
 
-    // PARTE 2: PROPAGACIÓN DE CONTAGIOS (Lista Activa) - O(I * K)
-    // Solo iteramos a los que están actualmente enfermos
-    int current_infected_count = data->infectedCount; // Guardamos el tope para no iterar a los nuevos infectados hoy mismo
+    // ============================================================
+    // PARTE 2: PROPAGACIÓN DE CONTAGIOS (Grafo) - O(I * K)
+    // ============================================================
+    
+    // Guardamos el conteo actual para NO iterar sobre los que se contagien HOY mismo
+    // (simulamos que el contagio tarda al menos 1 día en ser infeccioso)
+    int current_infected_count = data->infectedCount; 
     
     for (int i = 0; i < current_infected_count; i++) {
+        // 1. Obtener al propagador (Spreader)
         int spreader_id = data->activeInfectedIDs[i];
         PERSON *spreader = get_person_by_id(data, spreader_id);
-        STRAIN *virus = get_cepa_by_id(data, spreader->actualStrainID);
+        
+        // Seguridad: si se curó justo hoy o no existe, saltar
+        if (!spreader || spreader->status != INFECTED) continue;
 
-        // Iterar contactos (Asumiendo que tienes acceso a la lista de contactos de la persona)
-        // NOTA: Necesitas que tu struct PERSON tenga una lista de contactos real cargada.
-        // Si no tienes lista de adyacencia en Person, esta parte es O(N) y lenta.
-        /* Ejemplo si tienes directory en PERSON:
-           ContList *contact = spreader->directory;
-           while(contact) {
-               PERSON *target = contact->person;
-               if (target->status == HEALTH) {
-                   if (probabilidad < virus->beta) {
-                       // CONTAGIAR: Marcar infected, Calcular fecha fin, Insertar en Heap, Insertar en ActiveList
-                   }
-               }
-               contact = contact->next;
-           }
-        */
+        // Obtener datos del virus que porta
+        STRAIN *virus = get_cepa_by_id(data, spreader->actualStrainID);
+        if (!virus) continue;
+
+        // 2. Iterar sobre sus contactos directos (Lista de Adyacencia)
+        ContactNode *contactoActual = spreader->contacts;
+        
+        while (contactoActual != NULL) {
+            PERSON *target = contactoActual->contact; // La víctima potencial
+
+            // Solo intentamos contagiar si la persona está SANA
+            if (target->status == HEALTH) {
+                
+                // Cálculo de Probabilidad:
+                // Factor Viral (Beta) * Factor de Contacto (si lo hubiera) * Aleatoriedad
+                // Aquí usamos beta directo. Se puede multiplicar por contactoActual->interactionProb si lo usas.
+                double probabilidadContagio = virus->beta;
+
+                if (((double)rand() / RAND_MAX) < probabilidadContagio) {
+                    // --- ¡NUEVO CONTAGIO CONFIRMADO! ---
+
+                    // A. Actualizar Estado
+                    target->status = INFECTED;
+                    target->actualStrainID = virus->id;
+                    target->daysInfected = 0;
+                    target->infectedBy = spreader->id; // Guardamos quién lo contagió (Trazabilidad)
+
+                    // B. Agregar a la lista de propagadores (para contagiar mañana)
+                    add_to_active_infected(data, target->id);
+                    
+                    // printf("  [☣️ CONTAGIO] %s contagió a %s (Cepa: %s)\n", spreader->name, target->name, virus->name);
+
+                    // C. Calcular su Destino (Recuperación o Muerte) y Agendar en el Heap
+                    // Duración estimada basada en el virus (recovery rate * 100 es un ejemplo, adáptalo a tus datos)
+                    int duracion = (int)(virus->recovery * 100); 
+                    if (duracion < 2) duracion = 5; // Mínimo 5 días
+                    
+                    int dia_evento = dia_actual + duracion;
+                    
+                    // Determinar si morirá o se recuperará
+                    int tipo_evento = EVENT_RECOVERY;
+                    if (((double)rand() / RAND_MAX) < virus->caseFatalityRatio) {
+                        tipo_evento = EVENT_DEATH;
+                    }
+
+                    // Insertar evento futuro en el Min-Heap (O(log N))
+                    insertMinHeap(data->eventQueue, target->id, (double)dia_evento, tipo_evento);
+                }
+            }
+            
+            // Siguiente contacto
+            contactoActual = contactoActual->next;
+        }
+        
+        // Aumentar contador de días del infectado actual (opcional, ya que el Heap maneja el final)
+        spreader->daysInfected++;
     }
 }
-
-
 
 
 MinHeap* createMinHeap(int capacity) {
