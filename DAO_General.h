@@ -6,18 +6,23 @@
 #include "Clases/Person.h"
 #include "Clases/Virus.h"
 #include "Clases/Regions.h"
+#include "Algorithms/Algorithms.h"
 
 // Global structure for program's data
-typedef struct BioSimData{
-    // Hash tables for O(1) lookup by id
+typedef struct BioSimData {
     PERSON_HASH_TABLE  *persons_table;    
     STRAIN_HASH_TABLE  *cepas_hash_table; 
     REGION_HASH_TABLE  *regions_table; 
 
-    // Size limits
+    // Event Queue for simulation
+    MinHeap *eventQueue; 
+
+    // Optimized infections from O(N) to O(Infected)
+    int *activeInfectedIDs; 
+    int infectedCount;
+    
     int max_individuos;
     int max_territorios;
-
 } BIO_SIM_DATA;
 
 // DAO public interface

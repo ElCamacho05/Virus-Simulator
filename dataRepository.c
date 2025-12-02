@@ -7,7 +7,7 @@
 BIO_SIM_DATA *GlobalData = NULL; 
 int pause = 0;
 int simulation_day = 0;
-double secondsPerDay = 2;
+double secondsPerDay = 1;
 
 int elapsedTime = 0;
 
