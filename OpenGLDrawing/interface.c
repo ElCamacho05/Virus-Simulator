@@ -60,6 +60,14 @@ void display() {
     glutSwapBuffers();
 }
 
+void drawInfectionLine(PERSON *p1, PERSON *p2) {
+    glColor3f(1.0, 0.0, 0.0);
+    glLineWidth(1.0);
+    glBegin(GL_LINES);
+        glVertex3f(p1->drawConf.pos[X], p1->drawConf.pos[Y], 0.0);
+        glVertex3f(p2->drawConf.pos[X], p2->drawConf.pos[Y], 0.0);
+    glEnd();
+}
 
 void drawRegions(BIO_SIM_DATA *data) {
     REGION_HASH_TABLE *reg = data->regions_table;
@@ -69,6 +77,9 @@ void drawRegions(BIO_SIM_DATA *data) {
     for (int i = 0; i< PERSON_HASH_TABLE_SIZE; i++) {
         PERSON_NODE *pN = pop->table[i];
         while (pN) {
+            PERSON *p = get_person_by_id(data, pN->data.id);
+            if (p->infectedBy >= 0) 
+                drawInfectionLine(p, get_person_by_id(data, p->infectedBy));
             if (pN->data.status == HEALTH) {
                 r = 0.0; g = 1.0, b = 0.0;
             }

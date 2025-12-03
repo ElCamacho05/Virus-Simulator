@@ -13,6 +13,7 @@
 #include "Clases/Virus.h"
 #include "../DAO_General.h"
 #include "dataRepository.h"
+#include "interface.h"
 
 
 // TYPES OF EVENTS (for patients and non-patients)
@@ -297,6 +298,7 @@ void run_daily_simulation(BIO_SIM_DATA *data, int dia_actual) {
                     // B. Agregar a la lista de propagadores (contagiará mañana)
                     STRAIN *strain = get_cepa_by_id(GlobalData, spreader->actualStrainID);
                     add_to_active_infected(data, target->id, strain->name);
+                    drawInfectionLine(target, spreader);
                     
                     // C. Calcular su Destino (Recuperación o Muerte)
                     int duracion = (int)(virus->recovery * 100); 
