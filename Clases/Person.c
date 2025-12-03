@@ -1,30 +1,18 @@
 #include "Person.h"
-
-// General Libraries
 #include <stdlib.h>
 #include <string.h>
-
-// Other Classes libraries
-#include "Regions.h"
+#include <stdio.h>
 #include "../Algorithms/Algorithms.h"
 
-// PERSON variables
 int PopulationCount = 0;
 
-/*
----------------
-PERSON Functions
----------------
-*/
-
-// ------------------
-// Basic Functions
 PERSON *createPerson(int id, char *name, int regionID, double initialDegree, double initialRisk, int daysInfected) {
     PERSON *nP =(PERSON*) malloc(sizeof(PERSON));
     if (nP == NULL) return NULL;
     
     nP->id = id;
-    strcpy(nP->name, name);
+    strncpy(nP->name, name, 29);
+    nP->name[29] = '\0';
     
     nP->regionID = regionID; 
     nP->initialDegree = initialDegree;
@@ -35,8 +23,12 @@ PERSON *createPerson(int id, char *name, int regionID, double initialDegree, dou
     nP->actualStrainID = -1;
     nP->infectedBy = -1;
 
-    nP->contacts = NULL;
+    // --- INICIALIZAR GRAFO ESTÁTICO ---
     nP->numContacts = 0;
+    for(int i=0; i<MAX_CONTACTS; i++) {
+        nP->contacts[i].contactID = -1;
+        nP->contacts[i].weight = 0.0;
+    }
 
     P_DRAW_UTILS dC = {{0.0, 0.0}};
     nP->drawConf = dC;
@@ -44,23 +36,20 @@ PERSON *createPerson(int id, char *name, int regionID, double initialDegree, dou
     return nP;
 };
 
-void addContact(PERSON *p, PERSON *contact) {
-    if (!p || !contact) return;
+// --- LÓGICA DE GRAFO ESTÁTICO ---
+void addContact(PERSON *p, int contactID, double weight) {
+    if (!p) return;
 
-    // Verificar si ya existe (opcional, para evitar duplicados en grafos no dirigidos si el archivo los repite)
-    ContactNode *curr = p->contacts;
-    while(curr) {
-        if(curr->contact->id == contact->id) return;
-        curr = curr->next;
+    if (p->numContacts >= MAX_CONTACTS) return;
+
+    // Verificar duplicados
+    for(int i=0; i<p->numContacts; i++) {
+        if(p->contacts[i].contactID == contactID) return;
     }
 
-    ContactNode *newNode = (ContactNode*)malloc(sizeof(ContactNode));
-    if (!newNode) return;
-
-    newNode->contact = contact;
-    newNode->interactionProb = 1.0; // Valor base, podría ser aleatorio o del archivo
-    newNode->next = p->contacts;
-    p->contacts = newNode;
+    // Agregar con PESO
+    p->contacts[p->numContacts].contactID = contactID;
+    p->contacts[p->numContacts].weight = weight; // Guardar cercanía
     p->numContacts++;
 }
 
@@ -73,11 +62,9 @@ PERSON_HASH_TABLE* createPersonHashTable() {
 
 void insertPersonInHash(PERSON_HASH_TABLE *ht, const PERSON *person) {
     if (!ht || !person) return;
-
     unsigned int index = hashFunction(person->id, PERSON_HASH_TABLE_SIZE);
     PERSON_NODE *new_node = (PERSON_NODE*)malloc(sizeof(PERSON_NODE));
     if (!new_node) return;
-
     new_node->data = *person;
     new_node->next = ht->table[index];
     ht->table[index] = new_node;
@@ -86,10 +73,8 @@ void insertPersonInHash(PERSON_HASH_TABLE *ht, const PERSON *person) {
 
 PERSON* searchPersonInHash(PERSON_HASH_TABLE *ht, int person_id) {
     if (!ht) return NULL;
-
     unsigned int index = hashFunction(person_id, PERSON_HASH_TABLE_SIZE);
     PERSON_NODE *current = ht->table[index];
-
     while (current != NULL) {
         if (current->data.id == person_id) {
             return &current->data;
@@ -103,15 +88,6 @@ void freePersonInHash(PERSON_HASH_TABLE *ht) {
     if (!ht) return;
     for (int i = 0; i < PERSON_HASH_TABLE_SIZE; i++) {
         PERSON_NODE *current = ht->table[i];
-        
-        PERSON_NODE *temp = current;
-        ContactNode *c = temp->data.contacts;
-        while(c) {
-            ContactNode *t_c = c;
-            c = c->next;
-            free(t_c);
-        }
-        
         while (current != NULL) {
             PERSON_NODE *temp = current;
             current = current->next;

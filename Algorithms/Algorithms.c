@@ -12,6 +12,7 @@
 #include "Clases/Person.h"
 #include "Clases/Virus.h"
 #include "../DAO_General.h"
+#include "dataRepository.h"
 
 
 // TYPES OF EVENTS (for patients and non-patients)
@@ -97,7 +98,7 @@ void analyze_connectivity_bfs(BIO_SIM_DATA *data, int start_person_id) {
     free(visited);
 }
 
-void add_to_active_infected(BIO_SIM_DATA *data, int person_id) {
+void add_to_active_infected(BIO_SIM_DATA *data, int person_id, char strainName[]) {
     printf("[INFECTED] - Person %d is now infected!!!\n", person_id);
     if (data->activeInfectedIDs && data->infectedCount < data->max_individuos) {
         data->activeInfectedIDs[data->infectedCount++] = person_id;
@@ -147,7 +148,7 @@ void establish_initial_outbreak(BIO_SIM_DATA *data, int num_brotes, int cepa_id)
             p->daysInfected = 0;
 
             // 1. Agregar a lista de propagadores activos
-            add_to_active_infected(data, p->id);
+            add_to_active_infected(data, p->id, virus->name);
 
             // 2. Calcular cuándo se recupera o muere (Lógica de Eventos)
             // Usamos la tasa de recuperación del virus para predecir el día
@@ -206,16 +207,16 @@ void run_daily_simulation(BIO_SIM_DATA *data, int dia_actual) {
                 printf("  [RECUPERADO] Persona %d (%s) es ahora inmune.\n", p->id, p->name);
             }
             
+            // IMPORTANTE: Ya no contagia, lo sacamos de la lista de infectados activos
             remove_from_active_infected(data, p->id);
         }
     }
 
     // ============================================================
-    // PARTE 2: PROPAGACIÓN DE CONTAGIOS (Grafo) - O(I * K)
+    // PARTE 2: PROPAGACIÓN DE CONTAGIOS (Grafo Estático) - O(I * K)
     // ============================================================
     
     // Guardamos el conteo actual para NO iterar sobre los que se contagien HOY mismo
-    // (simulamos que el contagio tarda al menos 1 día en ser infeccioso)
     int current_infected_count = data->infectedCount; 
     
     for (int i = 0; i < current_infected_count; i++) {
@@ -223,27 +224,36 @@ void run_daily_simulation(BIO_SIM_DATA *data, int dia_actual) {
         int spreader_id = data->activeInfectedIDs[i];
         PERSON *spreader = get_person_by_id(data, spreader_id);
         
+        // Seguridad: si se curó justo hoy o no existe, saltar
         if (!spreader || spreader->status != INFECTED) continue;
 
+        // Obtener datos del virus que porta
         STRAIN *virus = get_cepa_by_id(data, spreader->actualStrainID);
         if (!virus) continue;
 
-        // 2. Iterar sobre sus contactos directos (Lista de Adyacencia)
-        // Se asume que PERSON tiene un campo 'contacts' (ContactNode*)
-        ContactNode *contactoActual = spreader->contacts;
-        
-        while (contactoActual != NULL) {
-            PERSON *target = contactoActual->contact; // La víctima potencial
+        // 2. Iterar sobre sus contactos (ARRAY ESTÁTICO)
+        for (int j = 0; j < spreader->numContacts; j++) {
+            int targetID = spreader->contacts[j].contactID; // <--- CAMBIO
+            double contactWeight = spreader->contacts[j].weight; // <--- NUEVO: Cercanía
 
-            // Solo intentamos contagiar si la persona está SANA
-            if (target->status == HEALTH) {
+            PERSON *target = get_person_by_id(data, targetID);
+
+            // Solo intentamos contagiar si la persona existe y está SANA
+            if (target && target->status == HEALTH) {
+                // FORMULA MEJORADA DE CONTAGIO:
+                // Probabilidad Base (Virus) * Factor de Cercanía (Relación)
+                // Ejemplo: Virus 70% * Amigo Lejano (0.1) = 7% probabilidad real
+                //          Virus 70% * Esposa (0.9) = 63% probabilidad real
                 
-                double probabilidadContagio = virus->beta;
+                double probabilidadReal = virus->beta * contactWeight;
 
-                if (((double)rand() / RAND_MAX) < probabilidadContagio) {
+                // Opcional: Factor de ajuste si queda muy bajo
+                // probabilidadReal = virus->beta * (0.3 + 0.7 * contactWeight);
+
+                if (((double)rand() / RAND_MAX) < probabilidadReal) {   
                     // --- ¡NUEVO CONTAGIO CONFIRMADO! ---
                     
-                    int finalStrainID = virus->id; // Declarar aquí para scope correcto
+                    int finalStrainID = virus->id; 
 
                     // === LÓGICA DE MUTACIÓN ===
                     if (((double)rand() / RAND_MAX) < virus->mutationProb) {
@@ -258,36 +268,35 @@ void run_daily_simulation(BIO_SIM_DATA *data, int dia_actual) {
                             // Guardar en DAO
                             insertStrainInHash(data->cepas_hash_table, mutant);
                             
-                            // Guardar en TRIE (Limpieza de nombre)
+                            // Guardar en TRIE
                             extern struct TrieNode *strain_trie_root;
                             if (strain_trie_root) {
                                 char cleanName[50];
                                 int k = 0;
-                                for (int j = 0; mutant->name[j] != '\0' && k < 49; j++) {
-                                    char c = mutant->name[j];
+                                for (int idx = 0; mutant->name[idx] != '\0' && k < 49; idx++) {
+                                    char c = mutant->name[idx];
                                     if (isalpha(c)) {
                                         cleanName[k++] = tolower(c);
                                     }
                                 }
                                 cleanName[k] = '\0';
-                                
-                                // Usar cleanName (ahora sí se usa)
                                 insert(strain_trie_root, cleanName); 
                             }
 
-                            finalStrainID = mutant->id; // Actualizar ID final
-                            free(mutant); // Liberar temp
+                            finalStrainID = mutant->id; 
+                            free(mutant); 
                         }
                     }
 
                     // A. Actualizar Estado
                     target->status = INFECTED;
-                    target->actualStrainID = finalStrainID; // Usar variable ya declarada
+                    target->actualStrainID = finalStrainID;
                     target->daysInfected = 0;
                     target->infectedBy = spreader->id; 
 
-                    // B. Agregar a la lista de propagadores
-                    add_to_active_infected(data, target->id);
+                    // B. Agregar a la lista de propagadores (contagiará mañana)
+                    STRAIN *strain = get_cepa_by_id(GlobalData, spreader->actualStrainID);
+                    add_to_active_infected(data, target->id, strain->name);
                     
                     // C. Calcular su Destino (Recuperación o Muerte)
                     int duracion = (int)(virus->recovery * 100); 
@@ -303,13 +312,9 @@ void run_daily_simulation(BIO_SIM_DATA *data, int dia_actual) {
                     insertMinHeap(data->eventQueue, target->id, (double)dia_evento, tipo_evento);
                 }
             }
-            
-            // Siguiente contacto
-            contactoActual = contactoActual->next;
         }
         
         // Aumentar contador de días del infectado actual
-        // Ahora está DENTRO del bucle for, por lo que 'spreader' es visible
         spreader->daysInfected++;
     }
 }

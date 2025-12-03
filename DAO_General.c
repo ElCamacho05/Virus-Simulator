@@ -9,11 +9,16 @@
 #include <string.h>
 #include <math.h>
 
-// Initialize main data structure with hash tables for strains, persons, and regions
+// --------------------------------------------------------------------------------
+//                          CREACIÓN Y GESTIÓN DE MEMORIA
+// --------------------------------------------------------------------------------
+
+// Inicializa la estructura principal y las tablas hash
 BIO_SIM_DATA* createBiosimData(int max_i, int max_t) {
     BIO_SIM_DATA *data = (BIO_SIM_DATA*)malloc(sizeof(BIO_SIM_DATA));
     if (!data) return NULL;
 
+    // <--- CRÍTICO: Inicializar punteros a NULL para evitar Segmentation Faults en Algorithms.c --->
     data->eventQueue = NULL;
     data->activeInfectedIDs = NULL;
     data->infectedCount = 0;
@@ -21,10 +26,12 @@ BIO_SIM_DATA* createBiosimData(int max_i, int max_t) {
     data->max_individuos = max_i;
     data->max_territorios = max_t;
 
+    // Crear Tablas Hash
     data->cepas_hash_table = createStrainHashTable();
     data->persons_table = createPersonHashTable();
     data->regions_table = createRegionHashTable();
 
+    // Verificación de memoria
     if (!data->cepas_hash_table || !data->persons_table || !data->regions_table) {
         if (data->cepas_hash_table) freeStrainInHash(data->cepas_hash_table);
         if (data->persons_table) freePersonInHash(data->persons_table);
@@ -36,8 +43,25 @@ BIO_SIM_DATA* createBiosimData(int max_i, int max_t) {
     return data;
 }
 
+// Liberar toda la memoria al cerrar
+void free_biosim_data(BIO_SIM_DATA *data) {
+    if (!data) return;
+    if (data->cepas_hash_table) freeStrainInHash(data->cepas_hash_table);
+    if (data->persons_table) freePersonInHash(data->persons_table);
+    if (data->regions_table) freeRegionInHash(data->regions_table);
+    
+    // Liberar estructuras de simulación si se usaron
+    // (Nota: freeMinHeap debe estar disponible si incluyes BinaryHeap.h o similar)
+    // if (data->eventQueue) freeMinHeap(data->eventQueue); 
+    if (data->activeInfectedIDs) free(data->activeInfectedIDs);
+    
+    free(data);
+}
 
-// Load CSV files into hash tables for strains, regions, and persons
+// --------------------------------------------------------------------------------
+//                          CARGA DE DATOS (DAO)
+// --------------------------------------------------------------------------------
+
 BIO_SIM_DATA* load_initial_data(const char *cepas_f, const char *terr_f, const char *ind_f, const char *cont_f) {
     const int DEFAULT_MAX_I = 10000;
     const int DEFAULT_MAX_T = 1000;
@@ -46,12 +70,15 @@ BIO_SIM_DATA* load_initial_data(const char *cepas_f, const char *terr_f, const c
 
     FILE *fp;
 
-    // Load strains: id,name,beta,caseFatalityRatio,recovery
+    // 1. CARGA DE CEPAS
     fp = fopen(cepas_f, "r");
     if (fp) {
         char line[256];
         printf(" / Loading strains from '%s'...\n", cepas_f);
         int cepa_count = 0;
+        // Saltar header si existe (opcional, tu fgets lo lee como linea invalida si tiene texto)
+        // fgets(line, sizeof(line), fp); 
+
         while (fgets(line, sizeof(line), fp)) {
             STRAIN s = {0};
             if (sscanf(line, "%d,%19[^,],%lf,%lf,%lf,%lf", &s.id, s.name, &s.beta, &s.caseFatalityRatio, &s.recovery, &s.mutationProb) >= 1) {
@@ -65,7 +92,7 @@ BIO_SIM_DATA* load_initial_data(const char *cepas_f, const char *terr_f, const c
         fprintf(stderr, "!!!Warning: Strains file '%s' not found. Continuing...\n", cepas_f);
     }
 
-    // Load regions: id,name
+    // 2. CARGA DE REGIONES
     fp = fopen(terr_f, "r");
     if (fp) {
         char line[256];
@@ -76,7 +103,7 @@ BIO_SIM_DATA* load_initial_data(const char *cepas_f, const char *terr_f, const c
             char namebuf[64] = {0};
             if (sscanf(line, "%d,%63[^,]", &r.id, namebuf) >= 1) {
                 strncpy(r.name, namebuf, sizeof(r.name)-1);
-                r.peopleIDs = NULL;
+                r.peopleIDs = NULL; // No usado en esta versión
                 r.populationCount = 0;
                 r.infected = 0;
                 insertRegionInHash(data->regions_table, &r);
@@ -89,28 +116,34 @@ BIO_SIM_DATA* load_initial_data(const char *cepas_f, const char *terr_f, const c
         fprintf(stderr, "!!!Warning: Regions file '%s' not found. Continuing...\n", terr_f);
     }
 
-    // Load persons: id,name,regionID,initialDegree,initialRisk,status,actualStrainID,daysInfected
+    // 3. CARGA DE PERSONAS
     fp = fopen(ind_f, "r");
     if (fp) {
         char line[512];
         printf(" / Loading persons from '%s'...\n", ind_f);
         int person_count = 0;
+        // fgets(line, sizeof(line), fp); // Header skip
+        
         while (fgets(line, sizeof(line), fp)) {
-            PERSON p = {0};
-            char namebuf[128] = {0};
-            int status_int = 0;
-            int scanned = sscanf(line, "%d,%127[^,],%d,%lf,%lf,%d,%d,%d", &p.id, namebuf, &p.regionID, &p.initialDegree, &p.initialRisk, &status_int, &p.actualStrainID, &p.daysInfected);
+            int id, regionID, status, actualStrainID, daysInfected;
+            char name[128];
+            double initialDegree, initialRisk;
+            
+            int scanned = sscanf(line, "%d,%127[^,],%d,%lf,%lf,%d,%d,%d", 
+                &id, name, &regionID, &initialDegree, &initialRisk, &status, &actualStrainID, &daysInfected);
+            
             if (scanned >= 3) {
-                strncpy(p.name, namebuf, sizeof(p.name)-1);
-                if (scanned < 6) status_int = HEALTH;
-                p.status = (HealthStatus)status_int;
-                p.infectedBy = -1;
-                P_DRAW_UTILS drawConf = {{0.0, 0.0}};
-                p.drawConf = drawConf;
-                p.contacts = NULL;
-                p.numContacts = 0;
-                insertPersonInHash(data->persons_table, &p);
-                person_count++;
+                // createPerson inicializa el array estático de contactos a -1
+                PERSON *p = createPerson(id, name, regionID, initialDegree, initialRisk, daysInfected);
+                if(p) {
+                    if (scanned < 6) status = HEALTH;
+                    p->status = (HealthStatus)status;
+                    p->actualStrainID = actualStrainID;
+                    
+                    insertPersonInHash(data->persons_table, p);
+                    free(p); // Insert hace copia profunda, liberamos el temporal
+                    person_count++;
+                }
             }
         }
         fclose(fp);
@@ -119,24 +152,37 @@ BIO_SIM_DATA* load_initial_data(const char *cepas_f, const char *terr_f, const c
         fprintf(stderr, "!!!Warning: Persons file '%s' not found. Continuing...\n", ind_f);
     }
 
-    // Load Contact list: persona1,persona2
+    // 4. CARGA DE CONTACTOS (GRAFO ESTÁTICO)
     if (cont_f) {
         FILE *fc = fopen(cont_f, "r");
         if (fc) {
             char line[256];
             printf(" / Loading contacts from '%s'...\n", cont_f);
             int contact_count = 0;
+            
+            // fgets(line, sizeof(line), fc); // Header skip
 
             while (fgets(line, sizeof(line), fc)) {
                 int id1, id2;
+                double weight = 0.5; // Valor por defecto (cercanía media)
 
-                if (sscanf(line, "%d,%d", &id1, &id2) == 2) {
+                // Intentar leer: id1,id2,peso
+                // Si el archivo solo tiene id1,id2, weight se queda en 0.5 o se hace random
+                int matches = sscanf(line, "%d,%d,%lf", &id1, &id2, &weight);
+                
+                if (matches >= 2) { // Al menos leyó los IDs
+                    if (matches == 2) {
+                        // Si no viene peso en el TXT, generar aleatorio para realismo
+                        // 10% muy cercanos (familia), 90% normales
+                        weight = ((double)rand() / RAND_MAX); 
+                    }
+                    
                     PERSON *p1 = searchPersonInHash(data->persons_table, id1);
                     PERSON *p2 = searchPersonInHash(data->persons_table, id2);
 
                     if (p1 && p2) {
-                        addContact(p1, p2);
-                        addContact(p2, p1); 
+                        addContact(p1, id2, weight);
+                        addContact(p2, id1, weight); // Grafo no dirigido
                         contact_count++;
                     }
                 }
@@ -148,111 +194,91 @@ BIO_SIM_DATA* load_initial_data(const char *cepas_f, const char *terr_f, const c
         }
     }
 
+    // --- RESUMEN FINAL DE CARGA ---
     printf("\n========== DATA LOAD SUMMARY ==========\n");
     printf("Strains loaded:     %d\n", data->cepas_hash_table->count);
     printf("Regions loaded:     %d\n", data->regions_table->count);
     printf("Persons loaded:     %d\n", data->persons_table->count);
     printf("======================================\n\n");
 
-    /* Initialize drawing positions for regions and persons */
+    /* Inicializar posiciones visuales (Counting Sort + Radial Layout) */
     initializePositions(data);
 
     return data;
 }
 
-/*
- * Initialize radial positions for regions in a circle pattern (sunflower/girasol arrangement)
- * Positions are calculated based on region count and angle increment of 360/count degrees
- */
+// --------------------------------------------------------------------------------
+//                          SISTEMA DE POSICIONES (VISUALIZACIÓN)
+// --------------------------------------------------------------------------------
+
 void initializePositions(BIO_SIM_DATA *data) {
-    if (!data || !data->regions_table || !data->persons_table) {
-        fprintf(stderr, "Error: Invalid data structure in initializePositions\n");
-        return;
-    }
+    if (!data || !data->regions_table || !data->persons_table) return;
 
     REGION_HASH_TABLE *regions_table = data->regions_table;
     PERSON_HASH_TABLE *persons_table = data->persons_table;
     int num_regions = regions_table->count;
+    if (num_regions == 0) return;
 
-    if (num_regions == 0) {
-        fprintf(stderr, "Warning: No regions to initialize positions for\n");
-        return;
-    }
-
-    /* ===== STEP 1: Initialize radial positions for regions ===== */
-    printf("\n[Initializing] Region positions (radial arrangement)...\n");
+    printf("\n[Initializing] Region positions (Radial Layout)...\n");
     
-    double angle_increment = 2.0 * 3.14159265359 / num_regions;  /* 360 degrees / num_regions */
-    double region_distance = 200.0;  /* Distance from center (0,0) */
-    double region_radius = 30.0;     /* Radius of each region circle */
+    double angle_increment = 2.0 * 3.14159265359 / num_regions;
+    double region_distance = 200.0;
+    double region_radius = 30.0;
     int region_idx = 0;
 
-    /* Iterate through hash table to assign positions to regions */
+    // Fase 1: Posicionar Regiones en círculo
     for (int i = 0; i < REGION_HASH_TABLE_SIZE; i++) {
         REGION_NODE *node = regions_table->table[i];
         while (node != NULL) {
             double angle = region_idx * angle_increment;
-            double x = region_distance * cos(angle);
-            double y = region_distance * sin(angle);
-            
-            node->data.drawConf.pos[0] = x;
-            node->data.drawConf.pos[1] = y;
+            node->data.drawConf.pos[0] = region_distance * cos(angle);
+            node->data.drawConf.pos[1] = region_distance * sin(angle);
             node->data.drawConf.radio = region_radius;
-            
-            printf("  Region %d (%s): pos=(%.2f, %.2f), radio=%.2f\n", 
-                   node->data.id, node->data.name, x, y, region_radius);
-            
             region_idx++;
             node = node->next;
         }
     }
 
-    /* ===== STEP 2: Counting Sort - Sort persons by region ID (O(N)) ===== */
-    printf("\n[Initializing] Sorting persons by region ID (counting sort)...\n");
+    printf("[Initializing] Sorting persons (Counting Sort O(N))...\n");
     
     int total_persons = persons_table->count;
-    if (total_persons == 0) {
-        fprintf(stderr, "Warning: No persons to initialize positions for\n");
-        return;
-    }
+    if (total_persons == 0) return;
 
-    /* Allocate temporary array for sorted persons */
-    PERSON *sorted_persons = (PERSON*)malloc(total_persons * sizeof(PERSON));
-    if (!sorted_persons) {
-        fprintf(stderr, "Error: Memory allocation failed for sorted_persons\n");
-        return;
-    }
-
-    /* Allocate count array for each region ID */
+    // Fase 2: Counting Sort para agrupar personas por región
+    
+    // 2.1 Buscar región ID máxima para el tamaño del array de conteo
     int max_region_id = 0;
-    PERSON_NODE *tmp_node;
     for (int i = 0; i < PERSON_HASH_TABLE_SIZE; i++) {
-        tmp_node = persons_table->table[i];
-        while (tmp_node != NULL) {
-            if (tmp_node->data.regionID > max_region_id) {
-                max_region_id = tmp_node->data.regionID;
-            }
-            tmp_node = tmp_node->next;
+        PERSON_NODE *tmp = persons_table->table[i];
+        while (tmp) {
+            if (tmp->data.regionID > max_region_id) max_region_id = tmp->data.regionID;
+            tmp = tmp->next;
         }
     }
 
-    int *count = (int*)calloc(max_region_id + 1, sizeof(int));
-    if (!count) {
-        fprintf(stderr, "Error: Memory allocation failed for count array\n");
-        free(sorted_persons);
+    // 2.2 Allocar memoria (Calloc inicializa en 0)
+    PERSON *sorted_persons = (PERSON*)calloc(total_persons, sizeof(PERSON)); 
+    int *count = (int*)calloc(max_region_id + 2, sizeof(int)); // Buffer de seguridad
+    
+    if (!sorted_persons || !count) {
+        printf("Error: Memory allocation failed in initializePositions\n");
+        if(sorted_persons) free(sorted_persons);
+        if(count) free(count);
         return;
     }
 
-    /* Step 2a: Count persons per region */
+    // 2.3 Contar frecuencias
     for (int i = 0; i < PERSON_HASH_TABLE_SIZE; i++) {
-        tmp_node = persons_table->table[i];
-        while (tmp_node != NULL) {
-            count[tmp_node->data.regionID]++;
-            tmp_node = tmp_node->next;
+        PERSON_NODE *tmp = persons_table->table[i];
+        while (tmp) {
+            if (tmp->data.regionID >= 0 && tmp->data.regionID <= max_region_id) {
+                count[tmp->data.regionID]++;
+            }
+            tmp = tmp->next;
         }
     }
 
-    /* Step 2b: Convert counts to starting indices */
+    // 2.4 Calcular índices iniciales (Acumulado)
     int total = 0;
     for (int i = 0; i <= max_region_id; i++) {
         int temp = count[i];
@@ -260,102 +286,79 @@ void initializePositions(BIO_SIM_DATA *data) {
         total += temp;
     }
 
-    /* Step 2c: Place persons in sorted order */
+    // 2.5 Llenar array ordenado (Copia de estructuras)
     for (int i = 0; i < PERSON_HASH_TABLE_SIZE; i++) {
-        tmp_node = persons_table->table[i];
-        while (tmp_node != NULL) {
-            int region_id = tmp_node->data.regionID;
-            int pos = count[region_id]++;
-            sorted_persons[pos] = tmp_node->data;
-            tmp_node = tmp_node->next;
+        PERSON_NODE *tmp = persons_table->table[i];
+        while (tmp) {
+            int rid = tmp->data.regionID;
+            if (rid >= 0 && rid <= max_region_id) {
+                int pos = count[rid]++;
+                if (pos < total_persons) {
+                    sorted_persons[pos] = tmp->data; 
+                }
+            }
+            tmp = tmp->next;
         }
     }
 
-    /* ===== STEP 3: Initialize person positions within region circles ===== */
-    printf("[Initializing] Person positions (within region radii)...\n");
-    
+    // Fase 3: Asignar posiciones aleatorias dentro de cada región
+    printf("[Initializing] Assigning random positions within regions...\n");
     int current_region_id = -1;
     REGION *current_region = NULL;
-    double person_radius = 0.0;
-    int persons_in_current_region = 0;
-
+    
     for (int i = 0; i < total_persons; i++) {
         PERSON *person = &sorted_persons[i];
-
-        /* Get region info when moving to a new region */
+        
+        // Optimización: Solo buscar región si cambia (gracias al sort)
         if (person->regionID != current_region_id) {
             current_region_id = person->regionID;
             current_region = searchRegionInHash(regions_table, current_region_id);
-            person_radius = current_region ? current_region->drawConf.radio : 30.0;
-            persons_in_current_region = 0;
         }
 
-        /* Calculate random position within region radius */
-        double r = ((double)rand() / RAND_MAX) * person_radius;  /* Random radius within region */
-        double theta = ((double)rand() / RAND_MAX) * 2.0 * 3.14159265359;  /* Random angle */
+        // Posición aleatoria en coordenadas polares locales
+        double r = ((double)rand() / RAND_MAX) * region_radius;
+        double theta = ((double)rand() / RAND_MAX) * 2.0 * 3.14159265359;
 
         if (current_region) {
             person->drawConf.pos[0] = current_region->drawConf.pos[0] + r * cos(theta);
             person->drawConf.pos[1] = current_region->drawConf.pos[1] + r * sin(theta);
-        } else {
-            person->drawConf.pos[0] = r * cos(theta);
-            person->drawConf.pos[1] = r * sin(theta);
-        }
-
-        persons_in_current_region++;
-
-        if (persons_in_current_region <= 3 || i == total_persons - 1) {  /* Show first 3 and last */
-            printf("  Person %d (Region %d): pos=(%.2f, %.2f)\n", 
-                   person->id, person->regionID, 
-                   person->drawConf.pos[0], person->drawConf.pos[1]);
         }
     }
 
-    /* ===== STEP 4: Update hash table with sorted positions ===== */
-    /* Reconstruct hash table entries with updated position data */
+    // Fase 4: Actualizar la Hash Table original con las nuevas posiciones
     for (int i = 0; i < total_persons; i++) {
-        PERSON *person = &sorted_persons[i];
-        PERSON *hash_person = searchPersonInHash(persons_table, person->id);
-        if (hash_person) {
-            hash_person->drawConf = person->drawConf;
+        PERSON *p_sort = &sorted_persons[i];
+        PERSON *p_hash = searchPersonInHash(persons_table, p_sort->id);
+        if (p_hash) {
+            p_hash->drawConf = p_sort->drawConf;
         }
     }
 
-    /* Cleanup */
     free(sorted_persons);
     free(count);
-
-    printf("[Success] Position initialization completed\n\n");
+    printf("[Success] Positions initialized.\n");
 }
 
+// --------------------------------------------------------------------------------
+//                          HELPERS Y WRAPPERS
+// --------------------------------------------------------------------------------
 
-// O(1) lookups
 STRAIN* get_cepa_by_id(BIO_SIM_DATA *data, int id) {
-    if (!data || !data->cepas_hash_table) return NULL;
+    if (!data) return NULL;
     return searchStrainInHash(data->cepas_hash_table, id);
 }
 
 PERSON* get_person_by_id(BIO_SIM_DATA *data, int id) {
-    if (!data || !data->persons_table) return NULL;
+    if (!data) return NULL;
     return searchPersonInHash(data->persons_table, id);
 }
 
 REGION* get_region_by_id(BIO_SIM_DATA *data, int id) {
-    if (!data || !data->regions_table) return NULL;
+    if (!data) return NULL;
     return searchRegionInHash(data->regions_table, id);
 }
 
-// Free all data and hash tables
-void free_biosim_data(BIO_SIM_DATA *data) {
-    if (!data) return;
-    if (data->cepas_hash_table) freeStrainInHash(data->cepas_hash_table);
-    if (data->persons_table) freePersonInHash(data->persons_table);
-    if (data->regions_table) freeRegionInHash(data->regions_table);
-    free(data);
-}
-
-
-// TODO: Save contagion history to file
+// Placeholder para historial
 void save_contagion_history(BIO_SIM_DATA *data, int dia_simulacion) {
     (void)data; (void)dia_simulacion;
 }

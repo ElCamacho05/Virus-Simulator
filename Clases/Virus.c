@@ -172,8 +172,7 @@ STRAIN* mutate_strain(STRAIN *parent, int new_id) {
     // GENERAR NOMBRE: Si padre es "A", hijo será "A" + letra random (ej: "AB")
     // Esto cumple con la estructura requerida para el Trie.
     char suffix = 'A' + (rand() % 26);
-    printf(new_s->name, 20, "%s%c", parent->name, suffix);
-
+    snprintf(new_s->name, 21, "%s%c", parent->name, suffix);
     // MUTAR ESTADÍSTICAS (Variación aleatoria del +/- 10%)
     double variation = 0.9 + ((rand() % 20) / 100.0); 
     

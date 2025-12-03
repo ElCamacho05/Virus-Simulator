@@ -1,17 +1,15 @@
-// Clases/Person.h
-
 #ifndef PERSON_H
 #define PERSON_H
 
-// Self Library
 #include "Regions.h" 
 #include "Virus.h"
 
-// PERSON constants
 #define MAX_POPULATION 200 
 #define PERSON_HASH_TABLE_SIZE 263
 
-// Actual state of the Person
+// --- CAMBIO: Límite para Grafo Estático ---
+#define MAX_CONTACTS 20 
+
 typedef enum {
     HEALTH,
     INFECTED,
@@ -19,51 +17,44 @@ typedef enum {
     DEATH
 } HealthStatus;
 
-// PERSON structures
-struct Person;
-
-typedef struct ContactNode {
-    struct Person *contact; // Puntero directo a la persona contactada (Grafo)
-    struct ContactNode *next;
-    double interactionProb; // Probabilidad de contacto (opcional, por defecto 1.0 o aleatorio)
-} ContactNode;
-
 typedef struct PersonDrawUtils {
     double pos[2];
 } P_DRAW_UTILS;
 
-typedef struct Person{
+typedef struct {
+    int contactID;
+    double weight; // 0.0 a 1.0 (0.1 = lejano, 0.9 = muy cercano/familia)
+} ContactInfo;
+
+typedef struct Person {
     int id;
     char name[30];
-    
     int regionID; 
-    
     double initialDegree; 
-    
     double initialRisk; 
-    
     HealthStatus status; 
     int actualStrainID;
     int daysInfected;
     int infectedBy;
 
-    ContactNode *contacts; 
+    // --- CAMBIO: GRAFO ESTÁTICO (Array de IDs) ---
+    // Ya no usamos punteros, guardamos directamente el ID del amigo
+    ContactInfo contacts[MAX_CONTACTS];
     int numContacts;
 
     P_DRAW_UTILS drawConf;
 } PERSON;
 
-typedef struct PersonNode { // HASH wrapper structure
+typedef struct PersonNode { 
     PERSON data;
     struct PersonNode *next;
 } PERSON_NODE;
 
-typedef struct { // HASH TABLE centralized structure
+typedef struct { 
     PERSON_NODE *table[PERSON_HASH_TABLE_SIZE];
     int count;
 } PERSON_HASH_TABLE;
 
-// Person variables
 extern int PopulationCount;
 
 /*
@@ -75,7 +66,8 @@ PERSON Functions
 // ------------------
 // Basic Functions
 PERSON *createPerson(int id, char *name, int regionID, double initialDegree, double initialRisk, int daysInfected);
-void addContact(PERSON *p, PERSON *contact);
+void addContact(PERSON *p, int contactID, double weight);
+
 // ------------------
 // For Hash Functions
 PERSON_HASH_TABLE* createPersonHashTable();

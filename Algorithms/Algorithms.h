@@ -10,7 +10,7 @@ unsigned int hashFunction(int key, int size);
 // ---------                AUX ALGORITHMS                      ---------
 // ----------------------------------------------------------------------
 void analyze_connectivity_bfs(BIO_SIM_DATA *data, int start_person_id);
-void add_to_active_infected(BIO_SIM_DATA *data, int person_id);
+void add_to_active_infected(BIO_SIM_DATA *data, int person_id, char strainName[]);
 void remove_from_active_infected(BIO_SIM_DATA *data, int person_id);
 
 //PUNTO 2 (brotes aleatorios)
