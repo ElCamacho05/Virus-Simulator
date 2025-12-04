@@ -35,6 +35,9 @@ void cluster_strains(BIO_SIM_DATA *data);
 // Algoritmo de Grafo auxiliar (para Tarea 2)
 void run_bfs_for_detection(BIO_SIM_DATA *data, int initial_person_id);
 
+void sortStrainArray(BIO_SIM_DATA *data); // Heapsort para Cepas
+void sortRegionArray(BIO_SIM_DATA *data); // Quicksort para Regiones
+
 
 //Estructura de cola para BFS
 /*
