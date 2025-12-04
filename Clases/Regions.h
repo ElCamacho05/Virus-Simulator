@@ -4,11 +4,17 @@
 // REGION constants
 #define MAX_REGIONS 30 
 #define REGION_HASH_TABLE_SIZE 41 // prime number for initializing hash table
+#define MAX_REGION_CONNECTIONS 10
 
 // REGION variables
 extern int RegionsCount;
 
 // REGION structures
+typedef struct {
+    int targetRegionId;
+    double distanceKM;
+} RegionConnection;
+
 typedef struct RegionDrawUtils {
     double pos[2];
     double radio;
@@ -18,8 +24,13 @@ typedef struct Region{
     int id;
     char name[20];
     int *peopleIDs;
+
     int populationCount;    
-    int infected;
+    int infectedCount;
+    int deathCount;
+
+    RegionConnection connections[MAX_REGION_CONNECTIONS];
+    int numConnections;
 
     R_DRAW_UTILS drawConf;
 } REGION;
@@ -44,6 +55,7 @@ REGION Functions
 // ---------------
 // Basic Functions
 REGION *createRegion(int id, char name[]);
+void addRegionConnection(REGION *r, int targetId, double km);
 
 // ------------------
 // For Hash Functions

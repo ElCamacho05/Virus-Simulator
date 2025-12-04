@@ -46,7 +46,8 @@ void init_simulation_data() {
         "Data/strains.txt", 
         "Data/regions.txt", 
         "Data/population.txt", 
-        "Data/contactlist.txt"
+        "Data/contactlist.txt",
+        "Data/conexiones_regiones"
     );
 
     if (GlobalData != NULL) {

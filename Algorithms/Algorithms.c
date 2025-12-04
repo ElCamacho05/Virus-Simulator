@@ -241,15 +241,30 @@ void run_daily_simulation(BIO_SIM_DATA *data, int dia_actual) {
 
             // Solo intentamos contagiar si la persona existe y está SANA
             if (target && target->status == HEALTH) {
-                // FORMULA MEJORADA DE CONTAGIO:
-                // Probabilidad Base (Virus) * Factor de Cercanía (Relación)
-                // Ejemplo: Virus 70% * Amigo Lejano (0.1) = 7% probabilidad real
-                //          Virus 70% * Esposa (0.9) = 63% probabilidad real
-                
-                double probabilidadReal = virus->beta * contactWeight;
+                double factorRegional = 1.0;
 
-                // Opcional: Factor de ajuste si queda muy bajo
-                // probabilidadReal = virus->beta * (0.3 + 0.7 * contactWeight);
+                // Si están en regiones diferentes, penalizar por distancia
+                if (spreader->regionID != target->regionID) {
+                    REGION *rOrigin = get_region_by_id(data, spreader->regionID);
+                    
+                    // Buscar distancia en las conexiones de la región
+                    double distancia = -1.0; 
+                    for(int k=0; k < rOrigin->numConnections; k++) {
+                        if(rOrigin->connections[k].targetRegionId == target->regionID) {
+                            distancia = rOrigin->connections[k].distanceKM;
+                            break;
+                        }
+                    }
+
+                    if (distancia > 0) {
+                        factorRegional = 1.0 / (1.0 + (distancia / 500.0));
+                    } else { // se toma en cuenta por si la persona todavia puede volar, todo puede pasar...
+                        factorRegional = 0.05; 
+                    }
+                }
+
+                // FÓRMULA FINAL
+                double probabilidadReal = virus->beta * contactWeight * factorRegional;
 
                 if (((double)rand() / RAND_MAX) < probabilidadReal) {   
                     // --- ¡NUEVO CONTAGIO CONFIRMADO! ---

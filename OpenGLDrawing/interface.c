@@ -99,13 +99,32 @@ void drawRegions(BIO_SIM_DATA *data) {
             pN = pN->next;
         }
     }
+    
     // Draw regions
     for (int i = 0; i< REGION_HASH_TABLE_SIZE; i++) {
         REGION_NODE *rN = reg->table[i];
+
+        
+
         while (rN) {
+            double infectionRatio = 0.0;
+            if (rN->data.populationCount > 0) {
+                infectionRatio = (double)rN->data.infectedCount / (double)rN->data.populationCount;
+            }
+
+            if (infectionRatio > 1.0) infectionRatio = 1.0;
+
+            double r = 1.0;
+            double g = 1.0 - infectionRatio; // Si ratio es 1.0 (100% infectados), g = 0
+            double b = 1.0 - infectionRatio; // Si ratio es 1.0, b = 0
+            
+            double alpha = 0.3 + (infectionRatio * 0.5);
+            
             glPushMatrix();
                 glTranslatef(rN->data.drawConf.pos[X], rN->data.drawConf.pos[Y], 0.0);
-                circle(rN->data.drawConf.radio, 36, 1.0, 1.0, 1.0, 1.0);
+                // circle(rN->data.drawConf.radio, 36, 1.0, 1.0, 1.0, 1.0);
+                glColor4f(r, g, b, alpha);
+                circle(rN->data.drawConf.radio, 36, r, g, b, alpha);
             glPopMatrix();
             rN = rN->next;
         }

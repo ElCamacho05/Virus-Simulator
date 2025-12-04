@@ -20,6 +20,7 @@ typedef struct BioSimData {
     // Optimized infections from O(N) to O(Infected)
     int *activeInfectedIDs; 
     int infectedCount;
+    int deathCount;
     
     int max_individuos;
     int max_territorios;
@@ -30,7 +31,7 @@ BIO_SIM_DATA* createBiosimData(int max_i, int max_t);
 void free_biosim_data(BIO_SIM_DATA *data);
 
 // Load CSV files into data structure
-BIO_SIM_DATA* load_initial_data(const char *cepas_f, const char *terr_f, const char *ind_f, const char *cont_f);
+BIO_SIM_DATA* load_initial_data(const char *cepas_f, const char *terr_f, const char *ind_f, const char *cont_f, const char *reg_conn_f);
 
 // O(1) lookups on hash tables
 STRAIN* get_cepa_by_id(BIO_SIM_DATA *data, int id);

@@ -8,6 +8,7 @@
 // Other Classes libraries
 #include "Person.h"
 #include "../Algorithms/Algorithms.h"
+
 // REGION variables
 int RegionsCount;
 
@@ -25,15 +26,28 @@ REGION *createRegion(int id, char name[]) {
     
     reg->id = id;
     strcpy(reg->name, name);
-    reg->infected = 0;
+    reg->infectedCount = 0;
     
     reg->populationCount = 0;
     reg->peopleIDs = (int *) calloc(MAX_POPULATION, sizeof(int)); 
+
+    reg->numConnections = 0;
+    for(int i=0; i<MAX_REGION_CONNECTIONS; i++) {
+        reg->connections[i].targetRegionId = -1;
+        reg->connections[i].distanceKM = 0.0;
+    }
 
     R_DRAW_UTILS dC = {{0.0, 0.0}, 0.0};
     reg->drawConf = dC;
 
     return reg;
+}
+
+void addRegionConnection(REGION *r, int targetId, double km) {
+    if (!r || r->numConnections >= MAX_REGION_CONNECTIONS) return;
+    r->connections[r->numConnections].targetRegionId = targetId;
+    r->connections[r->numConnections].distanceKM = km;
+    r->numConnections++;
 }
 
 // ------------------

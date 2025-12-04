@@ -22,6 +22,7 @@ BIO_SIM_DATA* createBiosimData(int max_i, int max_t) {
     data->eventQueue = NULL;
     data->activeInfectedIDs = NULL;
     data->infectedCount = 0;
+    data->deathCount = 0;
     
     data->max_individuos = max_i;
     data->max_territorios = max_t;
@@ -62,8 +63,7 @@ void free_biosim_data(BIO_SIM_DATA *data) {
 //                          CARGA DE DATOS (DAO)
 // --------------------------------------------------------------------------------
 
-BIO_SIM_DATA* load_initial_data(const char *cepas_f, const char *terr_f, const char *ind_f, const char *cont_f) {
-    const int DEFAULT_MAX_I = 10000;
+BIO_SIM_DATA* load_initial_data(const char *cepas_f, const char *terr_f, const char *ind_f, const char *cont_f, const char *reg_conn_f) {    const int DEFAULT_MAX_I = 10000;
     const int DEFAULT_MAX_T = 1000;
     BIO_SIM_DATA *data = createBiosimData(DEFAULT_MAX_I, DEFAULT_MAX_T);
     if (!data) return NULL;
@@ -105,7 +105,7 @@ BIO_SIM_DATA* load_initial_data(const char *cepas_f, const char *terr_f, const c
                 strncpy(r.name, namebuf, sizeof(r.name)-1);
                 r.peopleIDs = NULL; // No usado en esta versión
                 r.populationCount = 0;
-                r.infected = 0;
+                r.infectedCount = 0;
                 insertRegionInHash(data->regions_table, &r);
                 region_count++;
             }
@@ -116,7 +116,29 @@ BIO_SIM_DATA* load_initial_data(const char *cepas_f, const char *terr_f, const c
         fprintf(stderr, "!!!Warning: Regions file '%s' not found. Continuing...\n", terr_f);
     }
 
-    // 3. CARGA DE PERSONAS
+    // 3. CARGA DE CONEXIONES ENTRE REGIONES
+    if (reg_conn_f) {
+        FILE *fr = fopen(reg_conn_f, "r");
+        if (fr) {
+            char line[256];
+            printf(" / Loading region connections from '%s'...\n", reg_conn_f);
+            while (fgets(line, sizeof(line), fr)) {
+                int r1, r2;
+                double dist;
+                if (sscanf(line, "%d,%d,%lf", &r1, &r2, &dist) == 3) {
+                    REGION *reg1 = searchRegionInHash(data->regions_table, r1);
+                    REGION *reg2 = searchRegionInHash(data->regions_table, r2);
+                    if (reg1 && reg2) {
+                        addRegionConnection(reg1, r2, dist);
+                        addRegionConnection(reg2, r1, dist); // Bidireccional
+                    }
+                }
+            }
+            fclose(fr);
+        }
+    }
+
+    // 4. CARGA DE PERSONAS
     fp = fopen(ind_f, "r");
     if (fp) {
         char line[512];
@@ -153,7 +175,7 @@ BIO_SIM_DATA* load_initial_data(const char *cepas_f, const char *terr_f, const c
         fprintf(stderr, "!!!Warning: Persons file '%s' not found. Continuing...\n", ind_f);
     }
 
-    // 4. CARGA DE CONTACTOS (GRAFO ESTÁTICO)
+    // 5. CARGA DE CONTACTOS (GRAFO ESTÁTICO)
     if (cont_f) {
         FILE *fc = fopen(cont_f, "r");
         if (fc) {
