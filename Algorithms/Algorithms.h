@@ -19,7 +19,9 @@ void remove_from_active_infected(BIO_SIM_DATA *data, int person_id);
 ---------------------------------------------------------------------- 
 */
 
-void sortPersonArray(BIO_SIM_DATA *data);
+void sortPersonArray(BIO_SIM_DATA *data); // Mergesort for Persons
+void sortStrainArray(BIO_SIM_DATA *data); // Heapsort for Strains
+void sortRegionArray(BIO_SIM_DATA *data); // Quicksort para Regions
 
 //PUNTO 2 (brotes aleatorios)
 /*
@@ -43,8 +45,6 @@ void cluster_strains(BIO_SIM_DATA *data);
 // Algoritmo de Grafo auxiliar (para Tarea 2)
 void run_bfs_for_detection(BIO_SIM_DATA *data, int initial_person_id);
 
-void sortStrainArray(BIO_SIM_DATA *data); // Heapsort para Cepas
-void sortRegionArray(BIO_SIM_DATA *data); // Quicksort para Regiones
 
 
 //Estructura de cola para BFS

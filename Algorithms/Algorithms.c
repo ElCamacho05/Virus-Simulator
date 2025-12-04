@@ -118,18 +118,6 @@ void remove_from_active_infected(BIO_SIM_DATA *data, int person_id) {
 ---------------------------------------------------------------------- 
 */
 
-void swap_strain(STRAIN *a, STRAIN *b) {
-    STRAIN temp = *a;
-    *a = *b;
-    *b = temp;
-}
-
-void swap_region(REGION *a, REGION *b) {
-    REGION temp = *a;
-    *a = *b;
-    *b = temp;
-}
-
 /*
 ------------
 -- PERSON --
