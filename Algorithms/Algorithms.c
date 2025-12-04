@@ -14,7 +14,7 @@
 #include "Clases/Regions.h"
 #include "../DAO_General.h"
 #include "dataRepository.h"
-#include "interface.h"
+// #include "interface.h"
 
 // TYPES OF EVENTS
 #define EVENT_RECOVERY 1
@@ -56,9 +56,11 @@ int dequeue(Queue *q) {
     return id;
 }
 
-/* ----------------------------------------------------------------------
-   -----------------------     AUX ALGORITHMS     -----------------------
-   ---------------------------------------------------------------------- */
+/* 
+----------------------------------------------------------------------
+-----------------------     AUX ALGORITHMS     -----------------------
+----------------------------------------------------------------------
+*/
 
 void analyze_connectivity_bfs(BIO_SIM_DATA *data, int start_person_id) {
     bool *visited = (bool*)calloc(data->max_individuos + 1, sizeof(bool));
@@ -122,9 +124,73 @@ void remove_from_active_infected(BIO_SIM_DATA *data, int person_id) {
 ------------
 */
 // merge sort (muchas personas)
-void sortPersonArray() {
+void mergePerson(PERSON **arr, int l, int m, int r) {
+    int i, j, k;
+    int n1 = m - l + 1;
+    int n2 = r - m;
 
+    // Crear arreglos temporales de PUNTEROS
+    PERSON **L = (PERSON**)malloc(n1 * sizeof(PERSON*));
+    PERSON **R = (PERSON**)malloc(n2 * sizeof(PERSON*));
+
+    // Copiar datos a los temporales
+    for (i = 0; i < n1; i++)
+        L[i] = arr[l + i];
+    for (j = 0; j < n2; j++)
+        R[j] = arr[m + 1 + j];
+
+    // Mezclar los temporales de vuelta en arr[l..r]
+    i = 0; 
+    j = 0; 
+    k = l;
+    while (i < n1 && j < n2) {
+        // CRITERIO DE ORDENAMIENTO: Riesgo Descendente (> para mayor primero)
+        if (L[i]->initialRisk >= R[j]->initialRisk) {
+            arr[k] = L[i];
+            i++;
+        } else {
+            arr[k] = R[j];
+            j++;
+        }
+        k++;
+    }
+
+    // Copiar los elementos restantes de L[], si hay
+    while (i < n1) {
+        arr[k] = L[i];
+        i++;
+        k++;
+    }
+
+    // Copiar los elementos restantes de R[], si hay
+    while (j < n2) {
+        arr[k] = R[j];
+        j++;
+        k++;
+    }
+
+    free(L);
+    free(R);
 }
+
+void mergeSortPersonArrayRecursivo(PERSON **arr, int l, int r) {
+    if (l < r) {
+        int m = l + (r - l) / 2;
+
+        mergeSortPersonArrayRecursivo(arr, l, m);
+        mergeSortPersonArrayRecursivo(arr, m + 1, r);
+
+        mergePerson(arr, l, m, r);
+    }
+}
+
+// public function
+void sortPersonArray(BIO_SIM_DATA *data) {
+    if (!data || !data->personArray || data->max_individuos <= 0) return;
+    
+    mergeSortPersonArrayRecursivo(data->personArray, 0, data->max_individuos - 1);
+}
+
 /*
 ------------
 -- STRAIN --
@@ -342,7 +408,7 @@ void run_daily_simulation(BIO_SIM_DATA *data, int dia_actual) {
                     target->infectedBy = spreader->id; 
 
                     add_to_active_infected(data, target->id, virus->name);
-                    drawInfectionLine(target, spreader);
+                    // drawInfectionLine(target, spreader);
 
                     // Agendar evento de terminación (Recovery/Death)
                     int dur = (int)(virus->recovery * 100); 

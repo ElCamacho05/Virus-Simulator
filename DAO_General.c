@@ -4,6 +4,8 @@
 #include "Clases/Virus.h"
 #include "Clases/Person.h"
 #include "Clases/Regions.h"
+#include "Algorithms/Algorithms.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -224,6 +226,28 @@ BIO_SIM_DATA* load_initial_data(const char *cepas_f, const char *terr_f, const c
         }
         fclose(fp);
         printf(" / Loaded %d persons.\n", person_count);
+        data->max_individuos = person_count;
+        data->max_individuos = person_count; // Actualizar límite real
+
+        // --- AHORA SÍ: GENERAR EL ARREGLO LINEAL (Para el MergeSort) ---
+        data->personArray = (PERSON**)malloc(sizeof(PERSON*) * person_count);
+        
+        // Llenar el arreglo recorriendo la tabla hash
+        int idx = 0;
+        for (int i = 0; i < PERSON_HASH_TABLE_SIZE; i++) {
+            PERSON_NODE *node = data->persons_table->table[i];
+            while (node != NULL) {
+                if (idx < person_count) {
+                    data->personArray[idx] = &node->data; // Guardamos el puntero a la persona real
+                    idx++;
+                }
+                node = node->next;
+            }
+        }
+
+        // Ordenar inmediatamente (Fase 1)
+        printf(" / Sorting persons by Initial Risk (MergeSort)...\n");
+        sortPersonArray(data); // Llamada a tu función corregida
     } else {
         fprintf(stderr, "!!!Warning: Persons file '%s' not found. Continuing...\n", ind_f);
     }

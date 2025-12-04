@@ -44,7 +44,7 @@ typedef struct BioSimData {
     // arrays to keep data sorted for each day
     // daily sorting occurs in 'void idle', in display,
     // so all data is updated daily 
-    PERSON *personArray;
+    PERSON **personArray;
     REGION *regionArray;
     STRAIN *strainArray;
 
