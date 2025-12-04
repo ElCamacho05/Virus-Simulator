@@ -172,7 +172,6 @@ void establish_initial_outbreak(BIO_SIM_DATA *data, int num_brotes, int cepa_id)
 }
 
 
-//PUNTO 3(Simulacion de los contagios diarios)
 /*
 --------------------------------
         DAILY SIMULATION
