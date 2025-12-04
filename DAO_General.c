@@ -217,6 +217,8 @@ BIO_SIM_DATA* load_initial_data(const char *cepas_f, const char *terr_f, const c
                     p->status = (HealthStatus)status;
                     p->actualStrainID = actualStrainID;
                     p->infectedBy = -1;
+                    REGION *r = searchRegionInHash(data->regions_table, p->regionID);
+                    r->populationCount++,
                     
                     insertPersonInHash(data->persons_table, p);
                     free(p); // Insert hace copia profunda, liberamos el temporal

@@ -51,7 +51,7 @@ void init(int *argc, char *argv[]) {
 
 void display() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
+    glClearColor(0.06, 0.02, 0.14, 1.0);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     
