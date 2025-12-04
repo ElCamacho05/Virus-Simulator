@@ -118,6 +118,18 @@ void remove_from_active_infected(BIO_SIM_DATA *data, int person_id) {
 ---------------------------------------------------------------------- 
 */
 
+void swap_strain(STRAIN *a, STRAIN *b) {
+    STRAIN temp = *a;
+    *a = *b;
+    *b = temp;
+}
+
+void swap_region(REGION *a, REGION *b) {
+    REGION temp = *a;
+    *a = *b;
+    *b = temp;
+}
+
 /*
 ------------
 -- PERSON --
@@ -196,9 +208,122 @@ void sortPersonArray(BIO_SIM_DATA *data) {
 -- STRAIN --
 ------------
 */
-// heapsort
-void sortStrainArray() {
 
+// === UTILIDADES DE INTERCAMBIO ===
+void swap_strain(STRAIN *a, STRAIN *b) {
+    STRAIN temp = *a;
+    *a = *b;
+    *b = temp;
+}
+
+void swap_region(REGION *a, REGION *b) {
+    REGION temp = *a;
+    *a = *b;
+    *b = temp;
+}
+
+// ======================================================================
+// ===  HEAPSORT- Adaptado para crecimiento dinámico
+// ======================================================================
+
+// Estructura auxiliar para manejar el montículo
+typedef struct {
+    STRAIN *array;
+    int n;
+} StrainHeap;
+
+void init_strain_heap(StrainHeap *h, int space) {
+    // Alocación dinámica basada en el conteo ACTUAL
+    h->array = (STRAIN *)malloc(sizeof(STRAIN) * space);
+    h->n = 0;
+}
+
+// Push con "Flotar" (Max-Heap por ID)
+void push_strain_heap(StrainHeap *h, STRAIN dato) {
+    int i = h->n;
+    h->array[i] = dato;
+    h->n++;
+
+    // Flotar
+    for (; i > 0; i = (i - 1) / 2) {
+        // Ordenamos por ID (puedes cambiar a 'beta' o 'letalidad' si prefieres)
+        if (h->array[i].id > h->array[(i - 1) / 2].id) {
+            swap_strain(&h->array[i], &h->array[(i - 1) / 2]);
+        } else {
+            break;
+        }
+    }
+}
+
+// Pop con "Hundir"
+STRAIN pop_strain_heap(StrainHeap *h) {
+    STRAIN temp = h->array[0];
+    int i = 0;
+    
+    // Mover el último al principio
+    h->array[0] = h->array[(h->n) - 1];
+    h->n--;
+
+    // Hundir
+    int hMayor;
+    while (2 * i + 1 < h->n) { 
+        int left = 2 * i + 1;
+        int right = 2 * i + 2;
+        
+        if (right < h->n && h->array[right].id > h->array[left].id)
+            hMayor = right;
+        else
+            hMayor = left;
+
+        if (h->array[hMayor].id > h->array[i].id) {
+            swap_strain(&h->array[i], &h->array[hMayor]);
+            i = hMayor;
+        } else {
+            break;
+        }
+    }
+    return temp;
+}
+
+// --- FUNCIÓN PRINCIPAL: HEAPSORT DINÁMICO ---
+void sortStrainArray(BIO_SIM_DATA *data) {
+    if (!data || !data->cepas_hash_table) return;
+
+    // 1. OBTENER TAMAÑO REAL ACTUAL (Clave para evitar errores)
+    int total_strains = data->cepas_hash_table->count;
+    
+    if (total_strains == 0) {
+        printf("[Heapsort] No hay cepas registradas.\n");
+        return;
+    }
+
+    printf("\n[Heapsort] Ordenando %d cepas detectadas (incluyendo mutaciones)...\n", total_strains);
+
+    // 2. Inicializar Heap con el tamaño exacto necesario
+    StrainHeap h;
+    init_strain_heap(&h, total_strains);
+    if (!h.array) return; // Error de memoria
+
+    // 3. Extraer todas las cepas de la Hash Table al Heap
+    for (int i = 0; i < VIRUS_HASH_TABLE_SIZE; i++) {
+        STRAIN_NODE *current = data->cepas_hash_table->table[i];
+        while (current != NULL) {
+            push_strain_heap(&h, current->data);
+            current = current->next;
+        }
+    }
+
+    // 4. Extraer ordenado (Pop devuelve el mayor -> Orden Descendente)
+    printf("--- Lista de Cepas Ordenada por ID (Desc) ---\n");
+    for (int i = 0; i < total_strains; i++) {
+        STRAIN s = pop_strain_heap(&h);
+        printf("  ID: %d | Nombre: %s | Beta: %.2f | Mutación: %.3f\n", 
+               s.id, s.name, s.beta, s.mutationProb);
+    }
+    printf("--------------------------------------------\n");
+
+    // 5. Liberar memoria temporal
+    free(h.array);
 }
 
 /*
@@ -206,13 +331,75 @@ void sortStrainArray() {
 -- REGION --
 ------------
 */
-// 
 
-// quicksort
-void sortRegionArray() {
+// ======================================================================
+// ===  QUICKSORT 
+// ======================================================================
 
+// Partición Lomuto adaptada a REGION
+int partition_region(REGION *arr, int low, int high) {
+    int pivot = arr[high].id; // Pivote: ID de la región
+    int i = (low - 1);
+
+    for (int j = low; j <= high - 1; j++) {
+        // Orden Ascendente (ID menor primero)
+        if (arr[j].id < pivot) {
+            i++;
+            swap_region(&arr[i], &arr[j]);
+        }
+    }
+    swap_region(&arr[i + 1], &arr[high]);
+    return (i + 1);
 }
 
+// Función recursiva
+void quickSort_region_recursive(REGION *arr, int low, int high) {
+    if (low < high) {
+        int pi = partition_region(arr, low, high);
+        quickSort_region_recursive(arr, low, pi - 1);
+        quickSort_region_recursive(arr, pi + 1, high);
+    }
+}
+
+// --- FUNCIÓN PRINCIPAL: QUICKSORT DINÁMICO ---
+void sortRegionArray(BIO_SIM_DATA *data) {
+    if (!data || !data->regions_table) return;
+
+    // 1. Obtener conteo actual
+    int total_regions = data->regions_table->count;
+    if (total_regions == 0) return;
+
+    // 2. Crear arreglo lineal temporal (Snapshot de los datos)
+    REGION *region_array = (REGION *)malloc(sizeof(REGION) * total_regions);
+    if (!region_array) return;
+
+    // 3. Llenar arreglo desde la Hash Table
+    int k = 0;
+    for (int i = 0; i < REGION_HASH_TABLE_SIZE; i++) { 
+        REGION_NODE *current = data->regions_table->table[i];
+        while (current != NULL) {
+            if (k < total_regions) {
+                region_array[k++] = current->data;
+            }
+            current = current->next;
+        }
+    }
+
+    printf("\n[Quicksort] Ordenando %d regiones por ID...\n", total_regions);
+
+    // 4. Ejecutar Quicksort
+    quickSort_region_recursive(region_array, 0, total_regions - 1);
+
+    // 5. Mostrar Resultado
+    for (int i = 0; i < total_regions; i++) {
+        printf("  Region ID: %d | %s | Población: %d | Infectados: %d\n", 
+               region_array[i].id, region_array[i].name, 
+               region_array[i].populationCount, region_array[i].infectedCount);
+    }
+
+    // 6. Liberar memoria temporal
+    free(region_array);
+}
 
 /* 
 ----------------------------------------------------------------------
