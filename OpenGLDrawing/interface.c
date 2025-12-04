@@ -131,6 +131,12 @@ void drawRegions(BIO_SIM_DATA *data) {
     }
 }
 
+void drawHistorialPanel(BIO_SIM_DATA *data) {
+    HISTORY_HASH_TABLE *history = data->history_table;
+
+    
+}
+
 void idle() {
     if (GlobalData && !pause) {
         updateTime();

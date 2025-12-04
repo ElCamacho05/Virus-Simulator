@@ -17,5 +17,5 @@ to do:
 			se puede guardar en una bd (un documento), en el cual se puede buscar por numero de paciente o algo asi.
 		
 TODO: 4
-DOING: 2
-DONE: 6
+DOING: 0
+DONE: 7

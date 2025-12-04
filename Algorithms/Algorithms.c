@@ -110,9 +110,49 @@ void remove_from_active_infected(BIO_SIM_DATA *data, int person_id) {
     }
 }
 
-/* ----------------------------------------------------------------------
-   -----------------------    INITIAL OUTBREAK    -----------------------
-   ---------------------------------------------------------------------- */
+/* 
+----------------------------------------------------------------------
+-----------------------         SORTING        -----------------------
+---------------------------------------------------------------------- 
+*/
+
+/*
+------------
+-- PERSON --
+------------
+*/
+// merge sort (muchas personas)
+void sortPersonArray() {
+
+}
+/*
+------------
+-- STRAIN --
+------------
+*/
+// heapsort
+void sortStrainArray() {
+
+}
+
+/*
+------------
+-- REGION --
+------------
+*/
+// 
+
+// quicksort
+void sortRegionArray() {
+
+}
+
+
+/* 
+----------------------------------------------------------------------
+-----------------------    INITIAL OUTBREAK    -----------------------
+----------------------------------------------------------------------
+*/
 
 void establish_initial_outbreak(BIO_SIM_DATA *data, int num_brotes, int cepa_id) {
     // Inicialización de estructuras si no existen
@@ -153,9 +193,11 @@ void establish_initial_outbreak(BIO_SIM_DATA *data, int num_brotes, int cepa_id)
     }
 }
 
-/* ----------------------------------------------------------------------
-   -----------------------    DAILY SIMULATION    -----------------------
-   ---------------------------------------------------------------------- */
+/*
+----------------------------------------------------------------------
+-----------------------    DAILY SIMULATION    -----------------------
+----------------------------------------------------------------------
+*/
 
 void run_daily_simulation(BIO_SIM_DATA *data, int dia_actual) {
     
@@ -314,13 +356,15 @@ void run_daily_simulation(BIO_SIM_DATA *data, int dia_actual) {
         spreader->daysInfected++;
     }
 
-    printf("=== FIN DIA %d | Infectados Activos: %d | Fallecidos: %d ===\n", 
+    printf("\n\n=== FIN DIA %d | Infectados Activos: %d | Fallecidos: %d ===\n\n\n", 
            dia_actual, data->infectedCount, data->deathCount);
 }
 
-/* ----------------------------------------------------------------------
-   -----------------------   HEAP IMPLEMENTATION  -----------------------
-   ---------------------------------------------------------------------- */
+/*
+----------------------------------------------------------------------
+-----------------------   HEAP IMPLEMENTATION  -----------------------
+----------------------------------------------------------------------
+*/
 
 MinHeap* createMinHeap(int capacity) {
     MinHeap* heap = (MinHeap*)malloc(sizeof(MinHeap));

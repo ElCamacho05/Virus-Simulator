@@ -39,7 +39,14 @@ typedef struct {
 typedef struct BioSimData {
     PERSON_HASH_TABLE  *persons_table;    
     STRAIN_HASH_TABLE  *cepas_hash_table; 
-    REGION_HASH_TABLE  *regions_table; 
+    REGION_HASH_TABLE  *regions_table;
+
+    // arrays to keep data sorted for each day
+    // daily sorting occurs in 'void idle', in display,
+    // so all data is updated daily 
+    PERSON *personArray;
+    REGION *regionArray;
+    STRAIN *strainArray;
 
     // Tabla Hash para el historial (O(1) por paciente)
     HISTORY_HASH_TABLE *history_table;
