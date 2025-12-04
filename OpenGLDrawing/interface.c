@@ -78,7 +78,7 @@ void drawRegions(BIO_SIM_DATA *data) {
         PERSON_NODE *pN = pop->table[i];
         while (pN) {
             PERSON *p = get_person_by_id(data, pN->data.id);
-            if (p->infectedBy >= 0) 
+            if (p->infectedBy != -1 && p->status != DEATH)
                 drawInfectionLine(p, get_person_by_id(data, p->infectedBy));
             if (pN->data.status == HEALTH) {
                 r = 0.0; g = 1.0, b = 0.0;
