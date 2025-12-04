@@ -12,6 +12,44 @@
 // --------------------------------------------------------------------------------
 //                          CREACIÓN Y GESTIÓN DE MEMORIA
 // --------------------------------------------------------------------------------
+extern unsigned int hashFunction(int key, int size);
+
+// --------------------------------------------------------------------------------
+//                          GESTIÓN DE HISTORIAL (TAREA 8)
+// --------------------------------------------------------------------------------
+
+// Inicializa la Tabla Hash de Historial
+HISTORY_HASH_TABLE* createHistoryHashTable() {
+    HISTORY_HASH_TABLE *ht = (HISTORY_HASH_TABLE*)calloc(1, sizeof(HISTORY_HASH_TABLE));
+    return ht;
+}
+
+// Auxiliar: Busca o crea el registro de historial de una persona (O(1) promedio)
+PERSON_HISTORY* get_or_create_history(HISTORY_HASH_TABLE *ht, int person_id) {
+    // Usamos el mismo tamaño de Hash que las Personas para la indexación
+    unsigned int index = hashFunction(person_id, PERSON_HASH_TABLE_SIZE); 
+    HISTORY_NODE *current = ht->table[index];
+
+    // Buscar (O(1) promedio)
+    while (current != NULL) {
+        if (current->person_id == person_id) return &current->history;
+        current = current->next;
+    }
+
+    // No existe, crear nuevo nodo e insertarlo
+    HISTORY_NODE *new_node = (HISTORY_NODE*)malloc(sizeof(HISTORY_NODE));
+    if (!new_node) return NULL;
+    
+    new_node->person_id = person_id;
+    new_node->history.capacity = 50; // Capacidad inicial
+    new_node->history.entry_count = 0;
+    new_node->history.entries = (DAILY_HISTORY_ENTRY*)malloc(sizeof(DAILY_HISTORY_ENTRY) * 50);
+    
+    new_node->next = ht->table[index];
+    ht->table[index] = new_node;
+    
+    return &new_node->history;
+}
 
 // Inicializa la estructura principal y las tablas hash
 BIO_SIM_DATA* createBiosimData(int max_i, int max_t) {
@@ -30,6 +68,9 @@ BIO_SIM_DATA* createBiosimData(int max_i, int max_t) {
     data->cepas_hash_table = createStrainHashTable();
     data->persons_table = createPersonHashTable();
     data->regions_table = createRegionHashTable();
+
+    // Inicializar la Tabla Hash de Historial
+    data->history_table = createHistoryHashTable();
 
     // Verificación de memoria
     if (!data->cepas_hash_table || !data->persons_table || !data->regions_table) {
@@ -53,9 +94,21 @@ void free_biosim_data(BIO_SIM_DATA *data) {
     // Liberar estructuras de simulación si se usaron
     // (Nota: freeMinHeap debe estar disponible si incluyes BinaryHeap.h o similar)
     // if (data->eventQueue) freeMinHeap(data->eventQueue); 
-    if (data->activeInfectedIDs) free(data->activeInfectedIDs);
+    //if (data->activeInfectedIDs) free(data->activeInfectedIDs);
+    if (data->history_table) {
+        for (int i = 0; i < PERSON_HASH_TABLE_SIZE; i++) {
+            HISTORY_NODE *current = data->history_table->table[i];
+            while (current != NULL) {
+                HISTORY_NODE *temp = current;
+                current = current->next;
+                free(temp->history.entries); // Liberar el array dinámico de entradas
+                free(temp);
+            }
+        }
+        free(data->history_table);
+    }
     
-    free(data);
+    //free(data);
 }
 
 // --------------------------------------------------------------------------------
@@ -206,6 +259,36 @@ BIO_SIM_DATA* load_initial_data(const char *cepas_f, const char *terr_f, const c
     initializePositions(data);
 
     return data;
+}
+
+// IMPLEMENTACIÓN DE CONSULTA O(1)
+DAILY_HISTORY_ENTRY* get_history_by_id_and_day(BIO_SIM_DATA *data, int person_id, int day) {
+    if (!data || !data->history_table || day <= 0) return NULL;
+
+    // 1. O(1): Buscar el nodo de historial de la persona
+    unsigned int index = hashFunction(person_id, PERSON_HASH_TABLE_SIZE); 
+    HISTORY_NODE *current = data->history_table->table[index];
+
+    while (current != NULL) {
+        if (current->person_id == person_id) {
+            PERSON_HISTORY *p_hist = &current->history;
+            
+            // 2. O(1): Acceder al array indexado por día (si la fecha es válida)
+            // (La entrada del día 1 está en el índice 0; día N en índice N-1)
+            int array_index = day - 1; 
+
+            // Verificamos que el día solicitado ya se haya registrado
+            if (array_index >= 0 && array_index < p_hist->entry_count) {
+                // Verificamos que el día en la estructura coincida (seguridad extra)
+                if (p_hist->entries[array_index].day == day) {
+                    return &p_hist->entries[array_index];
+                }
+            }
+            return NULL;
+        }
+        current = current->next;
+    }
+    return NULL;
 }
 
 // --------------------------------------------------------------------------------
@@ -361,5 +444,36 @@ REGION* get_region_by_id(BIO_SIM_DATA *data, int id) {
 
 // Placeholder para historial
 void save_contagion_history(BIO_SIM_DATA *data, int dia_simulacion) {
-    (void)data; (void)dia_simulacion;
+    if (!data || !data->history_table) return;
+
+    // Iterar sobre personas para guardar estados relevantes (O(N) total)
+    for (int i = 0; i < PERSON_HASH_TABLE_SIZE; i++) {
+        PERSON_NODE *node = data->persons_table->table[i];
+        while (node != NULL) {
+            PERSON *p = &node->data;
+
+            // Guardar solo si hay un estado relevante o es el día 1 (para trazabilidad)
+            if (p->status != HEALTH || dia_simulacion == 1) { 
+                
+                PERSON_HISTORY *hist = get_or_create_history(data->history_table, p->id);
+                
+                // Redimensionar si es necesario (O(1) amortizado)
+                if (hist->entry_count >= hist->capacity) {
+                    hist->capacity *= 2;
+                    hist->entries = (DAILY_HISTORY_ENTRY*)realloc(
+                        hist->entries, 
+                        hist->capacity * sizeof(DAILY_HISTORY_ENTRY)
+                    );
+                }
+
+                // Guardar entrada en la siguiente posición
+                DAILY_HISTORY_ENTRY *entry = &hist->entries[hist->entry_count];
+                entry->day = dia_simulacion;
+                entry->status = p->status;
+                entry->strain_id = p->actualStrainID;
+                hist->entry_count++;
+            }
+            node = node->next;
+        }
+    }
 }

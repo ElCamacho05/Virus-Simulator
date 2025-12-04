@@ -5,14 +5,14 @@ to do:
 	+++ LISTO (CAMACHO) Completar libreria interface.c para que tenga todos los elementos que se vayan a usar en la aplicacion principal
 	+++ Logica del programa
 		--- LISTO (ARMANDO) (Punto 2) establecer brotes aleatorios iniciales (10 personas)
-		--- (ARMANDO) (Punto 3) simulacion de contagios diarios entre personas (probabilistica)
-		--- (CAMACHO) (Punto 4) algoritmo para controlar la epidemia (simular cuarentenas para reducir riesgos)
+		--- LISTO (ARMANDO) (Punto 3) simulacion de contagios diarios entre personas (probabilistica)
+		--- LISTO (CAMACHO) (Punto 4) algoritmo para controlar la epidemia (simular cuarentenas para reducir riesgos)
 				se podria dividir en diferentes zonas de aislamiento, en cuarentena para evitar los contagios, las personas que ya estan contagiados o tuvieron contacto con 					personas infercatas(o con sintomas a la enfermedad)
 		--- (CAMACHO) (Punto 5) obtener el camino mas suceptible a infeccion (en comparacion con otro nodo lo que va hacer el territorio)
 		--- (CAMACHO) (Punto 6) obtener la mejor ruta para: (PREGUNTAR)
 			ooo tener en cuarentena a los infectados (mas suceptibles a contagiar) 
 			ooo vacunar a la gente (mas suceptibles de ser contagiados)
 		--- LISTO(ARMANDO) (Punto 7) Agrupar cepas por estructuras de nombre (PREGUNTAR)
-		--- (ARMANDO) (Punto 8 )Control de historial de contagios con referencia a todos los datos
+		--- LISTO (ARMANDO) (Punto 8 )Control de historial de contagios con referencia a todos los datos
 			se puede guardar en una bd (un documento), en el cual se puede buscar por numero de paciente o algo asi.
 		
