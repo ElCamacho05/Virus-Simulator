@@ -450,6 +450,8 @@ void sortRegionArray(BIO_SIM_DATA *data) {
 
 // Establishes the initial infected individuals (patient zero)
 void establish_initial_outbreak(BIO_SIM_DATA *data, int num_brotes, int cepa_id) {
+    if (num_brotes >= data->max_individuos) return;
+
     // Initialization of structures if they don't exist (Heap, Active Infected Array)
     if (!data->eventQueue) {
         // Large capacity for future events
@@ -462,12 +464,12 @@ void establish_initial_outbreak(BIO_SIM_DATA *data, int num_brotes, int cepa_id)
     STRAIN *virus = get_cepa_by_id(data, cepa_id);
     int count = 0;
 
+    int pIdx = 0;
     printf("[OUTBREAK] Infecting %d patient zeros...\n", num_brotes);
-
     while (count < num_brotes) {
-        int random_id = (rand() % data->max_individuos) + 1;
-        PERSON *p = get_person_by_id(data, random_id);
-
+        // int random_id = (rand() % data->max_individuos) + 1;
+        PERSON *p = get_person_by_id(data, pIdx);
+        
         if (p && p->status == HEALTH) {
             // Set initial infection status
             p->status = INFECTED;
@@ -489,6 +491,7 @@ void establish_initial_outbreak(BIO_SIM_DATA *data, int num_brotes, int cepa_id)
             insertMinHeap(data->eventQueue, p->id, (double)duracion, type);
             count++;
         }
+        pIdx++;
     }
 }
 
