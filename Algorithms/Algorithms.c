@@ -20,6 +20,7 @@
 #define EVENT_RECOVERY 1
 #define EVENT_DEATH 2
 #define EVENT_IMMUNITY_LOSS 3 // Nuevo evento para pérdida de inmunidad
+#define EVENT_END_ISOLATION 4
 
 // Importamos mutate_strain de Virus.c
 extern STRAIN* mutate_strain(STRAIN *parent, int new_id);
@@ -442,6 +443,34 @@ void establish_initial_outbreak(BIO_SIM_DATA *data, int num_brotes, int cepa_id)
 
 void run_daily_simulation(BIO_SIM_DATA *data, int dia_actual) {
     
+    // always generates a new random seed
+    if (data) {
+        // Actualizar estado del nuevo infectado
+        int randomPersonId = (rand() % data->max_individuos);
+        int randomStrainId = (rand() % data->activeStrainCount);
+
+        PERSON *target = get_person_by_id(data, randomPersonId);
+        STRAIN *virus = get_cepa_by_id(data, randomStrainId);
+
+        if (!target || !virus) goto a;
+        target->status = INFECTED;
+        target->actualStrainID = randomStrainId;
+        target->daysInfected = 0;
+        target->infectedBy = -1; 
+
+        add_to_active_infected(data, target->id, virus->name);
+        // drawInfectionLine(target, spreader);
+
+        // Agendar evento de terminación (Recovery/Death)
+        int dur = (int)(virus->recovery * 100); 
+        if (dur < 2) dur = 5; 
+        int type = (((double)rand() / RAND_MAX) < virus->caseFatalityRatio) ? EVENT_DEATH : EVENT_RECOVERY;
+
+        insertMinHeap(data->eventQueue, target->id, (double)(dia_actual + dur), type);
+    }
+
+    a: {}
+
     // === PARTE 1: PROCESAR EVENTOS (Recuperaciones, Muertes y Pérdida de Inmunidad) ===
     while (!isHeapEmpty(data->eventQueue)) {
         // Ver si el evento más próximo ya ocurrió
@@ -494,6 +523,9 @@ void run_daily_simulation(BIO_SIM_DATA *data, int dia_actual) {
                 p->daysInfected = 0;
                 p->infectedBy = -1;
 
+                // lower risk by 5%
+                p->initialRisk = p->initialRisk*0.95;
+
                 // --- PROGRAMAR PÉRDIDA DE INMUNIDAD ---
                 // Duración aleatoria de inmunidad entre 20 y 50 días
                 int dias_inmune = 20 + (rand() % 31);
@@ -539,10 +571,10 @@ void run_daily_simulation(BIO_SIM_DATA *data, int dia_actual) {
                         }
                     }
                     if (distancia > 0) factorRegional = 1.0 / (1.0 + (distancia / 500.0));
-                    else factorRegional = 0.05; 
+                    else factorRegional = 0.05; // las personas pueden volar, uno nunca sabe
                 }
-
-                double prob = virus->beta * contactWeight * factorRegional;
+                double personRiskFactor = (1+target->initialRisk)/2.0;
+                double prob = virus->beta * contactWeight * factorRegional * personRiskFactor;
 
                 // Intento de contagio
                 if (((double)rand() / RAND_MAX) < prob) {
@@ -557,6 +589,8 @@ void run_daily_simulation(BIO_SIM_DATA *data, int dia_actual) {
                         
                         if (mutant) {
                             printf("  [MUTACION] Cepa %s mutó a -> %s (ID: %d)\n", virus->name, mutant->name, mutant->id);
+                            
+                            data->activeStrainCount++;
                             insertStrainInHash(data->cepas_hash_table, mutant);
                             
                             // Actualizar TRIE si existe (usamos la variable global definida al final)
@@ -599,6 +633,63 @@ void run_daily_simulation(BIO_SIM_DATA *data, int dia_actual) {
 
     printf("\n\n=== FIN DIA %d | Infectados Activos: %d | Fallecidos: %d ===\n\n\n", 
            dia_actual, data->infectedCount, data->deathCount);
+}
+
+/*
+----------------------------------------------------------------------
+-----------------------    RISK MINIMIZING     -----------------------
+----------------------------------------------------------------------
+*/
+
+// --- TAREA 4: MINIMIZACIÓN DE RIESGO (GREEDY) ---
+// Complejidad: O(N) de ejecución (después del O(N log N) de pre-proceso)
+void minimize_total_risk(BIO_SIM_DATA *data, double reduction_target_percentage) {
+    if (!data || !data->personArray || data->max_individuos == 0) return;
+
+    printf("\n[Tarea 4] Ejecutando algoritmo Greedy de aislamiento...\n");
+
+    // 1. Calcular Límite Máximo de Personas a Aislar
+    int maxIsolatedLimit = (int)(data->max_individuos * reduction_target_percentage);
+    
+    // 2. Variables de control
+    double currentEliminatedRisk = 0.0;
+    int newlyIsolatedCount = 0;
+
+    // 3. SELECCIÓN VORAZ (Greedy Selection)
+    // Recorremos el arreglo ya ordenado de MAYOR RIESGO a MENOR.
+    for (int i = 0; i < data->max_individuos; i++) {
+        PERSON *p = data->personArray[i];
+
+        // --- CONDICIÓN DE TOPE DE CAPACIDAD (NUEVO) ---
+        // Si ya tenemos el número máximo de personas en aislamiento, NO aislamos más.
+        if (data->isolatedCount >= maxIsolatedLimit) break;
+
+        // Solo aislamos si la persona está Activa (Sana, Infectada o Inmune) y NO ha sido aislada.
+        if (p->status != DEATH && p->status != ISOLATED) {
+            
+            // 3.1 Aplicar aislamiento
+            p->status = ISOLATED;
+            
+            // Si estaba infectado, sacarlo de la lista de propagación activa
+            if (p->status == INFECTED) {
+                remove_from_active_infected(data, p->id);
+            }
+
+            // 3.2 Programar fin de la cuarentena (10 días)
+            // Se asume que esta función se llama al inicio del día (día actual)
+            insertMinHeap(data->eventQueue, p->id, (double)(simulation_day + 10), EVENT_END_ISOLATION);
+            
+            // 3.3 Actualizar Contadores Globales
+            currentEliminatedRisk += p->initialRisk;
+            data->isolatedCount++; // Incremento global
+            newlyIsolatedCount++;
+        }
+    }
+
+    printf("  - Límite de Aislamiento: %d personas (%.2f%%)\n", maxIsolatedLimit, reduction_target_percentage * 100);
+    printf("  - Se aislaron %d nuevas personas de alto riesgo.\n", newlyIsolatedCount);
+    // Nota: El riesgo total (totalRisk) se calcula en otra fase, aquí solo reportamos el riesgo de los que aislamos hoy.
+    printf("  - Riesgo acumulado eliminado hoy: %.2f\n", currentEliminatedRisk);
 }
 
 /*

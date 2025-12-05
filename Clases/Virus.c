@@ -173,8 +173,8 @@ STRAIN* mutate_strain(STRAIN *parent, int new_id) {
     // Esto cumple con la estructura requerida para el Trie.
     char suffix = 'A' + (rand() % 26);
     snprintf(new_s->name, 21, "%s%c", parent->name, suffix);
-    // MUTAR ESTADÍSTICAS (Variación aleatoria del +/- 10%)
-    double variation = 0.9 + ((rand() % 20) / 100.0); 
+    // MUTAR ESTADÍSTICAS (Variación aleatoria del +/- 20%)
+    double variation = 0.9 + ((rand() % 40) / 100.0); 
     
     new_s->beta = parent->beta * variation;
     new_s->caseFatalityRatio = parent->caseFatalityRatio * variation;

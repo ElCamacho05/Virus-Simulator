@@ -14,7 +14,8 @@ typedef enum {
     HEALTH,
     INFECTED,
     IMMUNE,
-    DEATH
+    DEATH,
+    ISOLATED
 } HealthStatus;
 
 typedef struct PersonDrawUtils {

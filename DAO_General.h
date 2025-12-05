@@ -58,7 +58,12 @@ typedef struct BioSimData {
     int *activeInfectedIDs; 
     int infectedCount;
     int deathCount;
+    int isolatedCount;
+
+    int activeStrainCount;
     
+    double totalRisk;
+
     int max_individuos;
     int max_territorios;
 } BIO_SIM_DATA;

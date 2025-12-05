@@ -63,6 +63,11 @@ BIO_SIM_DATA* createBiosimData(int max_i, int max_t) {
     data->activeInfectedIDs = NULL;
     data->infectedCount = 0;
     data->deathCount = 0;
+    data->isolatedCount = 0;
+
+    data->totalRisk = 0.0;
+
+    data->activeStrainCount = 0;
     
     data->max_individuos = max_i;
     data->max_territorios = max_t;
@@ -143,6 +148,7 @@ BIO_SIM_DATA* load_initial_data(const char *cepas_f, const char *terr_f, const c
         }
         fclose(fp);
         printf(" / Loaded %d strains.\n", cepa_count);
+        data->activeStrainCount = cepa_count;
     } else {
         fprintf(stderr, "!!!Warning: Strains file '%s' not found. Continuing...\n", cepas_f);
     }

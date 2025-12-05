@@ -12,6 +12,9 @@
 #define X 0
 #define Y 1
 
+int totalDaysPaused = 0;
+double pausedSimAt = 0.0;
+
 // Function definition
 
 
@@ -77,9 +80,11 @@ void drawRegions(BIO_SIM_DATA *data) {
     for (int i = 0; i< PERSON_HASH_TABLE_SIZE; i++) {
         PERSON_NODE *pN = pop->table[i];
         while (pN) {
-            PERSON *p = get_person_by_id(data, pN->data.id);
-            if (p->infectedBy != -1 && p->status != DEATH)
-                drawInfectionLine(p, get_person_by_id(data, p->infectedBy));
+            PERSON *p1 = &pN->data;
+            PERSON *p2 = get_person_by_id(data, p1->infectedBy);
+            if (p1->infectedBy != -1 && p1->status != DEATH && p2->status == INFECTED) {
+                drawInfectionLine(p1, p2);
+            }
             if (pN->data.status == HEALTH) {
                 r = 0.0; g = 1.0, b = 0.0;
             }
@@ -92,6 +97,16 @@ void drawRegions(BIO_SIM_DATA *data) {
             else if(pN->data.status == DEATH) {
                 r = 0.0; g = 0.0; b = 0.0;
             }
+
+            else if(pN->data.status == ISOLATED) {
+            glPushMatrix();
+                glTranslatef(pN->data.drawConf.pos[X], pN->data.drawConf.pos[Y], 0.0);
+                r = 0.0; g = 1.0, b = 0.0; // green border
+                circle(2.5, 36, r, g, b, alpha);
+                r = 0.0; g = 0.0; b = 1.0; // blue color for middle circle
+            glPopMatrix();
+            }
+
             glPushMatrix();
                 glTranslatef(pN->data.drawConf.pos[X], pN->data.drawConf.pos[Y], 0.0);
                 circle(3.0, 36, r, g, b, alpha);
@@ -174,4 +189,12 @@ void idle() {
 void keyboard(unsigned char key, int x, int y) {
     if (key == 27)
         exit(0);
+    if (key == 'p' || key == 'P'){
+        pause = !pause;
+    }
+    if (key == 'm' || key == 'M') {
+        double isolationPercentage = (double)GlobalData->infectedCount/(double)GlobalData->max_individuos;
+        minimize_total_risk(GlobalData, isolationPercentage);
+    }
+
 }

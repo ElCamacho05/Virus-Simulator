@@ -39,6 +39,13 @@ void establish_initial_outbreak(BIO_SIM_DATA *data, int num_brotes, int cepa_id)
 */
 void run_daily_simulation(BIO_SIM_DATA *data, int dia_simulation);
 
+/*
+----------------------------------------------------------------------
+-----------------------    RISK MINIMIZING     -----------------------
+----------------------------------------------------------------------
+*/
+void minimize_total_risk(BIO_SIM_DATA *data, double reduction_target_percentage);
+
 // PUNTO 7 Agrupar cepas por estructuras de nombre (O(L) con Trie)
 void cluster_strains(BIO_SIM_DATA *data);
 
