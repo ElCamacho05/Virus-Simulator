@@ -12,8 +12,9 @@
 #define X 0
 #define Y 1
 
-int totalDaysPaused = 0;
-double pausedSimAt = 0.0;
+int totalDaysPaused = 0; // sum of all the time that the app were kept paused
+double sttPausedSimAt;
+double endPausedSimAt;
 
 // Function definition
 
@@ -147,7 +148,7 @@ void drawRegions(BIO_SIM_DATA *data) {
 }
 
 void drawHistorialPanel(BIO_SIM_DATA *data) {
-    HISTORY_HASH_TABLE *history = data->history_table;
+    // HISTORY_HASH_TABLE *history = data->history_table;
 
     
 }
