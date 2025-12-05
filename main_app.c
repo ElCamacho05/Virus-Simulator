@@ -55,6 +55,13 @@ void init_simulation_data() {
         
         // TODO: Set initial outbreaks (Task 2)
         establish_initial_outbreak(GlobalData, 10, 1);
+
+        // --- TAREA 5: CAMINO CRÍTICO ---
+        // Prueba: Buscar camino entre la persona 1 y la 50 (ajusta IDs según tu data)
+        // Solo si existen en la población
+        if (GlobalData->max_individuos >= 50) {
+            find_most_probable_path(GlobalData, 1, 50);
+        }
         
         // TODO: Initialize strain clustering (Task 7)
         cluster_strains(GlobalData);

@@ -52,6 +52,10 @@ void cluster_strains(BIO_SIM_DATA *data);
 // Algoritmo de Grafo auxiliar (para Tarea 2)
 void run_bfs_for_detection(BIO_SIM_DATA *data, int initial_person_id);
 
+//Tarea 5: camino de mayor probabilidda de infeccion utilizando Disjktra
+double find_most_probable_path(BIO_SIM_DATA *data, int start_id, int end_id);
+
+
 
 
 //Estructura de cola para BFS
