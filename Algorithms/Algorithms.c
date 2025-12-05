@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <ctype.h>
+#include <math.h>
 
 #include "Clases/Person.h"
 #include "Clases/Virus.h"
@@ -829,6 +830,128 @@ void freeMinHeap(MinHeap* heap) {
         free(heap);
     }
 }
+
+// ======================================================================
+// ===  TAREA 5: CAMINO MÁS SUSCEPTIBLE (DIJKSTRA MAX PROB)
+// ======================================================================
+
+
+typedef struct{
+    int parent_id;
+    double probability;
+    bool visited;
+}PathNode;
+
+double find_most_probable_path(BIO_SIM_DATA *data, int start_id, int end_id){
+    if (!data || !data->persons_table) return 0;
+
+    //int max_id = 0;
+
+    // Dado que tus IDs son secuenciales en la carga (1 a N), usaremos data->max_individuos + 1.
+    int limit = data->max_individuos + 100; // Buffer
+
+    //Array para Disjktra
+    double *min_cost =(double*)malloc(limit *sizeof(double));
+    int *parent = (int*)malloc(limit *sizeof(int));
+    bool *visited = (bool*)calloc(limit, sizeof(bool));
+
+    //Para su inicializacion
+    for(int i=0; i<limit; i++){
+        min_cost[i]= INFINITY;
+        parent[i]=-1;  
+    }
+
+    // Min-Heap para Dijkstra (reutilizamos tu estructura MinHeap)
+    // El 'value' del heap será el costo (-log P)
+    MinHeap *pq = createMinHeap(limit);
+
+    // Configurar nodo inicial
+    // Probabilidad 1.0 -> -log(1.0) = 0.0
+    min_cost[start_id] = 0.0;
+    insertMinHeap(pq, start_id, 0.0, 0); // Type 0 (dummy)
+
+    printf("\n[Tarea 5] Buscando camino de mayor riesgo: ID %d -> ID %d\n", start_id, end_id);
+
+    bool found = false;
+
+    while (!isHeapEmpty(pq)) {
+        HeapNode current = extractMinHeap(pq);
+        int u_id = current.id;
+        double u_cost = current.value;
+
+        // Si ya llegamos al destino (optimización)
+        if (u_id == end_id) {
+            found = true;
+            break;
+        }
+
+        // Lazy deletion: Si encontramos un camino mejor antes, ignorar este
+        if (u_cost > min_cost[u_id]) continue;
+        
+        visited[u_id] = true;
+
+        PERSON *u = get_person_by_id(data, u_id);
+        if (!u) continue;
+
+        // Recorrer vecinos (Contactos)
+        for (int i = 0; i < u->numContacts; i++) {
+            int v_id = u->contacts[i].contactID;
+            double weight = u->contacts[i].weight; // Probabilidad de contacto (0 a 1)
+
+            if (v_id <= 0 || v_id >= limit) continue;
+            if (visited[v_id]) continue;
+
+            // Calcular costo: w = -log(probabilidad)
+            // Evitar log(0) con un valor muy pequeño
+            if (weight <= 0.0001) weight = 0.0001;
+            double edge_cost = -log(weight); 
+
+            if (min_cost[u_id] + edge_cost < min_cost[v_id]) {
+                min_cost[v_id] = min_cost[u_id] + edge_cost;
+                parent[v_id] = u_id;
+                insertMinHeap(pq, v_id, min_cost[v_id], 0);
+            }
+        }
+    }
+
+    double final_prob = 0.0;
+
+    if (found) {
+        // Reconstruir camino
+        final_prob = exp(-min_cost[end_id]); // Inversa de -log
+        printf("  -> Camino ENCONTRADO! Probabilidad Total: %.6f (%.2f%%)\n", final_prob, final_prob * 100);
+        
+        // Imprimir ruta (Backtracking)
+        printf("  -> Ruta: ");
+        int curr = end_id;
+        int path_stack[1000];
+        int stack_idx = 0;
+        
+        while (curr != -1) {
+            path_stack[stack_idx++] = curr;
+            curr = parent[curr];
+        }
+        
+        for (int i = stack_idx - 1; i >= 0; i--) {
+            printf("%d", path_stack[i]);
+            if (i > 0) printf(" -> ");
+        }
+        printf("\n");
+
+    } else {
+        printf("  -> NO existe camino entre %d y %d.\n", start_id, end_id);
+    }
+
+    // Liberar memoria
+    free(min_cost);
+    free(parent);
+    free(visited);
+    freeMinHeap(pq); // Asumiendo que esta función libera solo la estructura del heap temporal
+
+    return final_prob;
+}
+
+
 
 // -------------------------------------------------------------
 // --- (Punto 7): CLUSTERING DE CEPAS (Placeholder) ---
