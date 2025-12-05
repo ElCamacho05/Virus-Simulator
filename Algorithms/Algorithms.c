@@ -286,7 +286,7 @@ void push_strain_heap(StrainHeap *h, STRAIN dato) {
     // Float Up
     for (; i > 0; i = (i - 1) / 2) {
         // Ordering by ID (can be changed to 'beta' or 'lethality' if needed)
-        if (h->array[i].id > h->array[(i - 1) / 2].id) {
+        if (h->array[i].beta > h->array[(i - 1) / 2].beta) {
             swap_strain(&h->array[i], &h->array[(i - 1) / 2]);
         } else {
             break;
