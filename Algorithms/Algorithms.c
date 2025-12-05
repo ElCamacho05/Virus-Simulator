@@ -21,6 +21,7 @@
 #define EVENT_DEATH 2
 #define EVENT_IMMUNITY_LOSS 3 // Nuevo evento para pérdida de inmunidad
 #define EVENT_END_ISOLATION 4
+#define EVENT_END_VACCINE_EFFECT 5
 
 // Importamos mutate_strain de Virus.c
 extern STRAIN* mutate_strain(STRAIN *parent, int new_id);
@@ -103,6 +104,15 @@ void add_to_active_infected(BIO_SIM_DATA *data, int person_id, char strainName[]
 }
 
 void remove_from_active_infected(BIO_SIM_DATA *data, int person_id) {
+    PERSON *person = get_person_by_id(data, person_id);
+    if (!person) return;
+    person->actualStrainID = -1;
+    person->daysInfected = 0;
+    person->infectedBy = -1;
+
+    REGION *region = get_region_by_id(data, person->regionID);
+    if (region) region->infectedCount--;
+
     for (int i = 0; i < data->infectedCount; i++) {
         if (data->activeInfectedIDs[i] == person_id) {
             // Sobrescribir con el último y reducir tamaño
@@ -489,18 +499,40 @@ void run_daily_simulation(BIO_SIM_DATA *data, int dia_actual) {
                 p->actualStrainID = -1;
                 p->infectedBy = -1;
                 p->daysInfected = 0;
-                // printf("  [NORMALIDAD] Persona %d vuelve a ser susceptible.\n", p->id);
+                printf("  [NORMALIDAD] Persona %d vuelve a ser susceptible.\n", p->id);
+            }
+            continue;
+        }
+        
+        if (event.type == EVENT_END_ISOLATION) {
+            if (p->status == ISOLATED) {
+                p->status = HEALTH; // Vuelve a estar sano
+                data->isolatedCount--; // Decremento global
+                printf("  [CUARENTENA FINALIZADA] Persona %d es liberada y esta sana.\n", p->id);
             }
             continue;
         }
 
+        // --- CASO: FIN DE EFECTO DE VACUNA (NUEVO) ---
+        if (event.type == EVENT_END_VACCINE_EFFECT) {
+            if (p->status == VACCINATED) {
+                p->status = HEALTH; // Vuelve a estar sano
+                p->initialRisk *= 2.0; // El riesgo vuelve a la normalidad (0.5 * 2 = 1.0)
+                // printf("  [EFECTO VACUNA PERDIDO] Persona %d es liberada y pierde proteccion.\n", p->id);
+            }
+            continue;
+        }
+
+
         // --- CASO: FIN DE INFECCIÓN ---
+        
+
         if (p->status == INFECTED) {
             REGION *region = get_region_by_id(data, p->regionID);
             
             if (event.type == EVENT_DEATH) {
                 p->status = DEATH;
-                printf("  [DECESO] Persona %d (%s) ha fallecido.\n", p->id, p->name);
+                printf("!!![DECESO] Persona %d (%s) ha fallecido.\n", p->id, p->name);
                 
                 // Actualizar contadores
                 if (region) {
@@ -509,7 +541,7 @@ void run_daily_simulation(BIO_SIM_DATA *data, int dia_actual) {
                 }
                 data->deathCount++;
 
-            } else {
+            } else { // EVENT_RECOTERY
                 // RECUPERACIÓN
                 p->status = IMMUNE;
                 printf("  [RECUPERADO] Persona %d (%s) es ahora inmune.\n", p->id, p->name);
@@ -643,7 +675,7 @@ void run_daily_simulation(BIO_SIM_DATA *data, int dia_actual) {
 
 // --- TAREA 4: MINIMIZACIÓN DE RIESGO (GREEDY) ---
 // Complejidad: O(N) de ejecución (después del O(N log N) de pre-proceso)
-void minimize_total_risk(BIO_SIM_DATA *data, double reduction_target_percentage) {
+void minimize_total_risk(BIO_SIM_DATA *data, double reduction_target_percentage, int mode) {
     if (!data || !data->personArray || data->max_individuos == 0) return;
 
     printf("\n[Tarea 4] Ejecutando algoritmo Greedy de aislamiento...\n");
@@ -655,6 +687,8 @@ void minimize_total_risk(BIO_SIM_DATA *data, double reduction_target_percentage)
     double currentEliminatedRisk = 0.0;
     int newlyIsolatedCount = 0;
 
+    int isoCount = 0;
+
     // 3. SELECCIÓN VORAZ (Greedy Selection)
     // Recorremos el arreglo ya ordenado de MAYOR RIESGO a MENOR.
     for (int i = 0; i < data->max_individuos; i++) {
@@ -662,33 +696,52 @@ void minimize_total_risk(BIO_SIM_DATA *data, double reduction_target_percentage)
 
         // --- CONDICIÓN DE TOPE DE CAPACIDAD (NUEVO) ---
         // Si ya tenemos el número máximo de personas en aislamiento, NO aislamos más.
-        if (data->isolatedCount >= maxIsolatedLimit) break;
+        if (isoCount >= maxIsolatedLimit) break;
+
+        if (p->status == DEATH || p->status == ISOLATED || p->status == VACCINATED) {
+            continue; 
+        }
 
         // Solo aislamos si la persona está Activa (Sana, Infectada o Inmune) y NO ha sido aislada.
-        if (p->status != DEATH && p->status != ISOLATED) {
-            
-            // 3.1 Aplicar aislamiento
-            p->status = ISOLATED;
-            
-            // Si estaba infectado, sacarlo de la lista de propagación activa
-            if (p->status == INFECTED) {
-                remove_from_active_infected(data, p->id);
-            }
-
-            // 3.2 Programar fin de la cuarentena (10 días)
-            // Se asume que esta función se llama al inicio del día (día actual)
-            insertMinHeap(data->eventQueue, p->id, (double)(simulation_day + 10), EVENT_END_ISOLATION);
-            
-            // 3.3 Actualizar Contadores Globales
-            currentEliminatedRisk += p->initialRisk;
-            data->isolatedCount++; // Incremento global
-            newlyIsolatedCount++;
+        // Si estaba infectado, sacarlo de la lista de propagación activa
+        if (p->status == INFECTED) {
+            remove_from_active_infected(data, p->id);
         }
+
+        if (mode == ISOLATED) { 
+            // 3.1a Aplicar aislamiento
+            p->status = ISOLATED;
+            insertMinHeap(data->eventQueue, p->id, (double)(simulation_day + 20), EVENT_END_ISOLATION);
+        }
+            
+        if (mode == VACCINATED) { 
+            // 3.1b aplicar vacuna
+            p->status = VACCINATED;
+            insertMinHeap(data->eventQueue, p->id, (double)(simulation_day + 50), EVENT_END_VACCINE_EFFECT);
+            p->initialRisk *= 0.5; // drastically reduced risk
+        }
+        
+
+        // 3.2 Programar fin de la cuarentena (10 días)
+        // Se asume que esta función se llama al inicio del día (día actual)
+        
+        // 3.3 Actualizar Contadores Globales
+        currentEliminatedRisk += p->initialRisk;
+        data->isolatedCount++; // Incremento global
+        isoCount++;
+        newlyIsolatedCount++;
+
     }
+    printf("%d\n", data->max_individuos);
+    printf("%d\n", maxIsolatedLimit);
 
     printf("  - Límite de Aislamiento: %d personas (%.2f%%)\n", maxIsolatedLimit, reduction_target_percentage * 100);
-    printf("  - Se aislaron %d nuevas personas de alto riesgo.\n", newlyIsolatedCount);
-    // Nota: El riesgo total (totalRisk) se calcula en otra fase, aquí solo reportamos el riesgo de los que aislamos hoy.
+    if (mode == ISOLATED)
+        printf("  - Se aislaron %d nuevas personas de alto riesgo.\n", newlyIsolatedCount);
+    else if (mode == VACCINATED) 
+        printf("  - Se vacunaron %d nuevas personas de alto riesgo.\n", newlyIsolatedCount);
+
+        // Nota: El riesgo total (totalRisk) se calcula en otra fase, aquí solo reportamos el riesgo de los que aislamos hoy.
     printf("  - Riesgo acumulado eliminado hoy: %.2f\n", currentEliminatedRisk);
 }
 

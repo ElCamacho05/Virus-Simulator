@@ -16,6 +16,8 @@ int totalDaysPaused = 0; // sum of all the time that the app were kept paused
 double sttPausedSimAt;
 double endPausedSimAt;
 
+double percentageOfAffected = 0.10;
+
 // Function definition
 
 
@@ -100,12 +102,21 @@ void drawRegions(BIO_SIM_DATA *data) {
             }
 
             else if(pN->data.status == ISOLATED) {
-            glPushMatrix();
-                glTranslatef(pN->data.drawConf.pos[X], pN->data.drawConf.pos[Y], 0.0);
-                r = 0.0; g = 1.0, b = 0.0; // green border
-                circle(2.5, 36, r, g, b, alpha);
-                r = 0.0; g = 0.0; b = 1.0; // blue color for middle circle
-            glPopMatrix();
+                glPushMatrix();
+                    glTranslatef(pN->data.drawConf.pos[X], pN->data.drawConf.pos[Y], 0.0);
+                    r = 1.0; g = 1.0, b = 0.0; // YELLOW border
+                    circle(2.5, 36, r, g, b, alpha);
+                    r = 0.0; g = 0.0; b = 1.0; // blue color for middle circle
+                glPopMatrix();
+            }
+
+            else if(pN->data.status == VACCINATED) {
+                glPushMatrix();
+                    glTranslatef(pN->data.drawConf.pos[X], pN->data.drawConf.pos[Y], 0.0);
+                    r = 0.0; g = 1.0, b = 0.0; // GREEN border
+                    circle(2.5, 36, r, g, b, alpha);
+                    r = 0.0; g = 0.0; b = 1.0; // blue color for middle circle
+                glPopMatrix();
             }
 
             glPushMatrix();
@@ -150,7 +161,7 @@ void drawRegions(BIO_SIM_DATA *data) {
 void drawHistorialPanel(BIO_SIM_DATA *data) {
     // HISTORY_HASH_TABLE *history = data->history_table;
 
-    
+
 }
 
 void idle() {
@@ -193,9 +204,14 @@ void keyboard(unsigned char key, int x, int y) {
     if (key == 'p' || key == 'P'){
         pause = !pause;
     }
-    if (key == 'm' || key == 'M') {
+    if (key == 'i' || key == 'I') {
         double isolationPercentage = (double)GlobalData->infectedCount/(double)GlobalData->max_individuos;
-        minimize_total_risk(GlobalData, isolationPercentage);
+        // minimize_total_risk(GlobalData, isolationPercentage, ISOLATED);
+        minimize_total_risk(GlobalData, percentageOfAffected, ISOLATED);
     }
-
+    if (key == 'v' || key == 'V') {
+        double vaccinationPercentage = (double)GlobalData->infectedCount/(double)GlobalData->max_individuos;
+        // minimize_total_risk(GlobalData, vaccinationPercentage, VACCINATED);
+        minimize_total_risk(GlobalData, percentageOfAffected, VACCINATED);
+    }
 }
