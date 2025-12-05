@@ -763,14 +763,14 @@ void minimize_total_risk(BIO_SIM_DATA *data, double reduction_target_percentage,
         if (mode == ISOLATED) { 
             // 3.1a Apply isolation
             p->status = ISOLATED;
-            // Schedule the end of isolation (e.g., in 20 days)
+            // Schedule the end of isolation (ex, in 20 days)
             insertMinHeap(data->eventQueue, p->id, (double)(simulation_day + 20), EVENT_END_ISOLATION);
         }
             
         if (mode == VACCINATED) { 
             // 3.1b Apply vaccine
             p->status = VACCINATED;
-            // Schedule the end of vaccine effect (e.g., in 50 days)
+            // Schedule the end of vaccine effect (ex, in 50 days)
             insertMinHeap(data->eventQueue, p->id, (double)(simulation_day + 50), EVENT_END_VACCINE_EFFECT);
             p->initialRisk *= 0.5; // Drastically reduced risk
         }

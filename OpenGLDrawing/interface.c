@@ -1,6 +1,7 @@
 #include "interface.h"
 #include <GL/glut.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "utils.h"
 #include "Algorithms.h"
@@ -18,11 +19,116 @@ double endPausedSimAt;
 
 double percentageOfAffected = 0.10;
 
-// searching people
+// searching people control variables
 char person_to_find[20];
 int is_searching = 0;
 int iPtF = -1;
 PERSON *personFound = NULL;
+
+// Helper: Retrieves the PERSON_HISTORY structure for a person ID
+PERSON_HISTORY* get_person_history(int person_id) {
+    if (!GlobalData || !GlobalData->history_table) return NULL;
+    
+    // Hash lookup
+    unsigned int index = hashFunction(person_id, PERSON_HASH_TABLE_SIZE); 
+    HISTORY_NODE *current = GlobalData->history_table->table[index];
+
+    while (current != NULL) {
+        if (current->person_id == person_id) return &current->history;
+        current = current->next;
+    }
+    return NULL;
+}
+
+// Maps HealthStatus enum value to a string
+const char* statusToString(HealthStatus status) {
+    switch (status) {
+        case HEALTH: return "HEALTHY";
+        case INFECTED: return "INFECTED";
+        case IMMUNE: return "IMMUNE";
+        case DEATH: return "DECEASED";
+        case ISOLATED: return "ISOLATED";
+        case VACCINATED: return "VACCINATED";
+        case QUARANTINE: return "QUARANTINE";
+        default: return "UNKNOWN";
+    }
+}
+
+// Draws a panel in the bottom-left with the last 5 history entries of the selected person
+void drawPersonHistoryPanel() {
+    if (!personFound) return;
+    
+    PERSON_HISTORY *history = get_person_history(personFound->id);
+    if (!history || history->entry_count == 0) return;
+
+    int max_entries = 5;
+    
+    // Panel coordinates (Bottom Left Quadrant, adjusted from center (0,0))
+    float panel_x = -350.0f; // Adjusted for a typical 500xAspect window
+    float panel_y = -220.0f;
+    float panel_width = 150.0f;
+    float panel_height = 130.0f;
+    float text_offset_x = 5.0f;
+    float line_height = 20.0f;
+    
+    // Draw the box
+    glColor4f(0.1f, 0.1f, 0.1f, 0.8f); // Dark background, translucent
+    glBegin(GL_QUADS);
+        glVertex2f(panel_x, panel_y);
+        glVertex2f(panel_x + panel_width, panel_y);
+        glVertex2f(panel_x + panel_width, panel_y + panel_height);
+        glVertex2f(panel_x, panel_y + panel_height);
+    glEnd();
+    
+    // Draw border
+    glColor3f(1.0f, 1.0f, 1.0f); // White border
+    glLineWidth(2.0f);
+    glBegin(GL_LINE_LOOP);
+        glVertex2f(panel_x, panel_y);
+        glVertex2f(panel_x + panel_width, panel_y);
+        glVertex2f(panel_x + panel_width, panel_y + panel_height);
+        glVertex2f(panel_x, panel_y + panel_height);
+    glEnd();
+    
+    // Display Title (Centered) - Keep display text in Spanish as requested for UI elements
+    char title_buffer[100];
+    snprintf(title_buffer, 100, "Historial de %s (ID: %d)", personFound->name, personFound->id);
+    glColor3f(1.0f, 1.0f, 0.0f); // Yellow text
+    text(title_buffer, panel_x + panel_width / 2.0f, panel_y + panel_height - 15.0f);
+    
+    // Display entries (Last one first, descending)
+    glColor3f(1.0f, 1.0f, 1.0f); // White text for entries
+    
+    for (int i = 0; i < max_entries; i++) {
+        // Index calculation to show the last 5 entries (most recent first)
+        int current_entry_index = history->entry_count - 1 - i;
+        if (current_entry_index < 0) break; 
+        
+        DAILY_HISTORY_ENTRY *entry = &history->entries[current_entry_index];
+        
+        char line_buffer[100];
+        // Use Spanish status string for the display
+        const char *status_str = statusToString((HealthStatus)entry->status); 
+        
+        // Format: [Dia 100] STATUS - (Cepa 5)
+        snprintf(line_buffer, 100, "[Dia %d] %s (Cepa %d)", 
+                 entry->day, 
+                 status_str, 
+                 entry->strain_id);
+                 
+        // Position: Starts below the title, moving down
+        float y_pos = panel_y + panel_height - 35.0f - (i * line_height);
+        
+        // Use glRasterPos2f directly for left alignment (x + offset)
+        glPushMatrix();
+            glColor3f(1.0f, 1.0f, 1.0f);
+            glRasterPos2f(panel_x + text_offset_x, y_pos);
+            for (int k = 0; k < strlen(line_buffer); k++) {
+                glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, line_buffer[k]);
+            }
+        glPopMatrix();
+    }
+}
 
 // Function definition
 
@@ -67,7 +173,11 @@ void display() {
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     
+    // Draw simulation elements (regions and persons)
     drawRegions(GlobalData);
+
+    // Draw the history panel for the selected person
+    drawPersonHistoryPanel(); 
 
     glutSwapBuffers();
 }
@@ -96,7 +206,7 @@ void drawRegions(BIO_SIM_DATA *data) {
             PERSON *p2 = get_person_by_id(data, p1->infectedBy);
             
             // Draw infection line if the person was infected by another active spreader
-            if (p1->infectedBy != -1 && p1->status != DEATH && p2->status == INFECTED) {
+            if (p1->infectedBy != -1 && p1->status != DEATH && p2 && p2->status == INFECTED) {
                 drawInfectionLine(p1, p2);
             }
             
@@ -193,7 +303,8 @@ void idle() {
         }
         
     }
-    glutPostRedisplay(); // Request redraw to update visualization
+    // Request redraw to update visualization
+    glutPostRedisplay(); 
 }
 
 // Handles window resizing and maintains aspect ratio

@@ -179,7 +179,7 @@ STRAIN* mutate_strain(STRAIN *parent, int new_id) {
 
     new_s->id = new_id;
 
-    // NAME GENERATION: If parent is "A", child will be "A" + random letter (e.g., "AB")
+    // NAME GENERATION: If parent is "A", child will be "A" + random letter (ex, "AB")
     // This complies with the structure required for the Trie
     char suffix = 'A' + (rand() % 26);
     snprintf(new_s->name, 21, "%s%c", parent->name, suffix);

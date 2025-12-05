@@ -21,7 +21,7 @@ typedef enum {
     QUARANTINE
 } HealthStatus;
 
-// Drawing utilities (e.g., position in a graphical representation)
+// Drawing utilities (ex, position in a graphical representation)
 typedef struct PersonDrawUtils {
     double pos[2];
 } P_DRAW_UTILS;
