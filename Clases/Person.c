@@ -23,7 +23,7 @@ PERSON *createPerson(int id, char *name, int regionID, double initialDegree, dou
     nP->actualStrainID = -1;
     nP->infectedBy = -1;
 
-    // --- INICIALIZAR GRAFO ESTÁTICO ---
+    // --- INITIALIZE STATIC GRAPH ---
     nP->numContacts = 0;
     for(int i=0; i<MAX_CONTACTS; i++) {
         nP->contacts[i].contactID = -1;
@@ -36,20 +36,20 @@ PERSON *createPerson(int id, char *name, int regionID, double initialDegree, dou
     return nP;
 };
 
-// --- LÓGICA DE GRAFO ESTÁTICO ---
+// --- STATIC GRAPH LOGIC ---
 void addContact(PERSON *p, int contactID, double weight) {
     if (!p) return;
 
     if (p->numContacts >= MAX_CONTACTS) return;
 
-    // Verificar duplicados
+    // Check for duplicates
     for(int i=0; i<p->numContacts; i++) {
         if(p->contacts[i].contactID == contactID) return;
     }
 
-    // Agregar con PESO
+    // Add with WEIGHT
     p->contacts[p->numContacts].contactID = contactID;
-    p->contacts[p->numContacts].weight = weight; // Guardar cercanía
+    p->contacts[p->numContacts].weight = weight; // Store closeness/likelihood
     p->numContacts++;
 }
 
@@ -60,6 +60,7 @@ PERSON_HASH_TABLE* createPersonHashTable() {
     return ht;
 }
 
+// Inserts a Person structure into the Hash Table using the person's ID as the key
 void insertPersonInHash(PERSON_HASH_TABLE *ht, const PERSON *person) {
     if (!ht || !person) return;
     unsigned int index = hashFunction(person->id, PERSON_HASH_TABLE_SIZE);
@@ -71,6 +72,7 @@ void insertPersonInHash(PERSON_HASH_TABLE *ht, const PERSON *person) {
     ht->count++;
 }
 
+// Searches for a person by their ID in the Hash Table
 PERSON* searchPersonInHash(PERSON_HASH_TABLE *ht, int person_id) {
     if (!ht) return NULL;
     unsigned int index = hashFunction(person_id, PERSON_HASH_TABLE_SIZE);
@@ -84,6 +86,7 @@ PERSON* searchPersonInHash(PERSON_HASH_TABLE *ht, int person_id) {
     return NULL;
 }
 
+// Frees all memory allocated for the Hash Table and its nodes
 void freePersonInHash(PERSON_HASH_TABLE *ht) {
     if (!ht) return;
     for (int i = 0; i < PERSON_HASH_TABLE_SIZE; i++) {

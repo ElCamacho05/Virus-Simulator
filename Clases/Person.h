@@ -7,9 +7,10 @@
 #define MAX_POPULATION 200 
 #define PERSON_HASH_TABLE_SIZE 263
 
-// --- CAMBIO: Límite para Grafo Estático ---
+// --- CHANGE: Limit for Static Graph ---
 #define MAX_CONTACTS 20 
 
+// Defines the possible health states of an individual
 typedef enum {
     HEALTH,
     INFECTED,
@@ -20,15 +21,18 @@ typedef enum {
     QUARANTINE
 } HealthStatus;
 
+// Drawing utilities (e.g., position in a graphical representation)
 typedef struct PersonDrawUtils {
     double pos[2];
 } P_DRAW_UTILS;
 
+// Information about a single contact/edge in the static graph
 typedef struct {
     int contactID;
-    double weight; // 0.0 a 1.0 (0.1 = lejano, 0.9 = muy cercano/familia)
+    double weight; // 0.0 to 1.0 (0.1 = distant, 0.9 = very close/family)
 } ContactInfo;
 
+// Main structure representing an individual in the simulation
 typedef struct Person {
     int id;
     char name[30];
@@ -40,19 +44,21 @@ typedef struct Person {
     int daysInfected;
     int infectedBy;
 
-    // --- CAMBIO: GRAFO ESTÁTICO (Array de IDs) ---
-    // Ya no usamos punteros, guardamos directamente el ID del amigo
+    // --- CHANGE: STATIC GRAPH (Array of IDs) ---
+    // Stores contact information (ID and weight)
     ContactInfo contacts[MAX_CONTACTS];
     int numContacts;
 
     P_DRAW_UTILS drawConf;
 } PERSON;
 
+// Node structure for the Person Hash Table (linked list for collisions)
 typedef struct PersonNode { 
     PERSON data;
     struct PersonNode *next;
 } PERSON_NODE;
 
+// Hash Table structure for efficient Person lookup
 typedef struct { 
     PERSON_NODE *table[PERSON_HASH_TABLE_SIZE];
     int count;

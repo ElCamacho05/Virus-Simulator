@@ -15,28 +15,61 @@
 #include "Clases/Regions.h"
 #include "../DAO_General.h"
 #include "dataRepository.h"
-// #include "interface.h"
 
-// TYPES OF EVENTS
+// Defines for event types
 #define EVENT_RECOVERY 1
 #define EVENT_DEATH 2
-#define EVENT_IMMUNITY_LOSS 3 // Nuevo evento para pérdida de inmunidad
+#define EVENT_IMMUNITY_LOSS 3 // Event for loss of immunity
 #define EVENT_END_ISOLATION 4
 #define EVENT_END_VACCINE_EFFECT 5
 
-// Importamos mutate_strain de Virus.c
+// External function for strain mutation (defined in Virus.c)
 extern STRAIN* mutate_strain(STRAIN *parent, int new_id);
 
+// Basic hash function for integer keys
 unsigned int hashFunction(int key, int size) {
     return (unsigned int)key % size;
 }
 
+/*
+---------------------------------------
+------ ENSURING DATA CONSISTENCY ------
+---------------------------------------
+*/
+void ensureConsistency(BIO_SIM_DATA *data) {
+    if (!data) return;
+
+    if (data->deathCount < 0) data->deathCount = 0;
+
+    if (data->infectedCount < 0) data->infectedCount = 0;
+
+    if (data->isolatedCount < 0) data->isolatedCount = 0;
+
+    if (data->activeStrainCount < 0) data->activeStrainCount = 0;
+    
+    if (!data->regions_table) return;
+
+    for (int i = 0; i < REGION_HASH_TABLE_SIZE; i++) { 
+        REGION_NODE *current = (REGION_NODE *)data->regions_table->table[i];
+        while (current != NULL) {
+            REGION *r = &current->data;
+            
+            if (r->infectedCount < 0) r->infectedCount = 0;
+            if (r->deathCount < 0) r->deathCount = 0;
+            if (r->populationCount < 0) r->populationCount = 0;
+            
+            current = current->next;
+        }
+    }
+}
+
 /* ----------------------------------------------------------------------
    -----------------------  QUEUE IMPLEMENTATION  -----------------------
-   (Necesaria para BFS)
+   (Required for BFS)
    ---------------------------------------------------------------------- */
 
 void enqueue(Queue*q, int id) {
+    // Allocates memory for a new node and adds it to the rear of the queue
     QueueNode *newNode =(QueueNode*)malloc(sizeof(QueueNode));
     if (!newNode) return;
     newNode->person_id= id;
@@ -50,6 +83,7 @@ void enqueue(Queue*q, int id) {
 }
 
 int dequeue(Queue *q) {
+    // Removes the node from the front of the queue and returns its person ID
     if (q->front == NULL) return -1;
     QueueNode *temp = q->front;
     int id = temp->person_id;
@@ -59,12 +93,12 @@ int dequeue(Queue *q) {
     return id;
 }
 
-/* 
-----------------------------------------------------------------------
+/* ----------------------------------------------------------------------
 -----------------------     AUX ALGORITHMS     -----------------------
 ----------------------------------------------------------------------
 */
 
+// Analyzes the connectivity of an outbreak zone using Breadth-First Search (BFS)
 void analyze_connectivity_bfs(BIO_SIM_DATA *data, int start_person_id) {
     bool *visited = (bool*)calloc(data->max_individuos + 1, sizeof(bool));
     if (!visited) return;
@@ -84,19 +118,20 @@ void analyze_connectivity_bfs(BIO_SIM_DATA *data, int start_person_id) {
     }
     while (q.front != NULL) dequeue(&q); 
     
-    printf("  [BFS Analysis]: Zona de brote desde ID %d cubre %d individuos.\n", start_person_id, total_affected_in_zone);
+    printf("  [BFS Analysis]: Outbreak zone from ID %d covers %d individuals.\n", start_person_id, total_affected_in_zone);
     free(visited);
 }
 
+// Adds a person to the array of active spreaders and updates regional stats
 void add_to_active_infected(BIO_SIM_DATA *data, int person_id, char strainName[]) {
     printf("[INFECTED] - Person %d is now infected!!!\n", person_id);
     
-    // 1. Agregar al Array de propagadores activos
+    // 1. Add to the active infected array
     if (data->activeInfectedIDs && data->infectedCount < data->max_individuos) {
         data->activeInfectedIDs[data->infectedCount++] = person_id;
     }
 
-    // 2. Actualizar estadística regional
+    // 2. Update regional statistics
     PERSON *person = get_person_by_id(data, person_id);
     if (person) {
         REGION *region = get_region_by_id(data, person->regionID);
@@ -104,19 +139,23 @@ void add_to_active_infected(BIO_SIM_DATA *data, int person_id, char strainName[]
     }
 }
 
+// Removes a person from the active spreader array and updates regional stats
 void remove_from_active_infected(BIO_SIM_DATA *data, int person_id) {
     PERSON *person = get_person_by_id(data, person_id);
     if (!person) return;
+
+    // Reset infection specific person data
     person->actualStrainID = -1;
     person->daysInfected = 0;
     person->infectedBy = -1;
 
+    // Update regional count
     REGION *region = get_region_by_id(data, person->regionID);
     if (region) region->infectedCount--;
 
+    // Remove from the activeInfectedIDs array by swapping with the last element
     for (int i = 0; i < data->infectedCount; i++) {
         if (data->activeInfectedIDs[i] == person_id) {
-            // Sobrescribir con el último y reducir tamaño
             data->activeInfectedIDs[i] = data->activeInfectedIDs[data->infectedCount - 1];
             data->infectedCount--;
             return;
@@ -124,8 +163,7 @@ void remove_from_active_infected(BIO_SIM_DATA *data, int person_id) {
     }
 }
 
-/* 
-----------------------------------------------------------------------
+/* ----------------------------------------------------------------------
 -----------------------         SORTING        -----------------------
 ---------------------------------------------------------------------- 
 */
@@ -135,28 +173,28 @@ void remove_from_active_infected(BIO_SIM_DATA *data, int person_id) {
 -- PERSON --
 ------------
 */
-// merge sort (muchas personas)
+// Merge step for Person array (sorted by risk)
 void mergePerson(PERSON **arr, int l, int m, int r) {
     int i, j, k;
     int n1 = m - l + 1;
     int n2 = r - m;
 
-    // Crear arreglos temporales de PUNTEROS
+    // Create temporary arrays of POINTERS
     PERSON **L = (PERSON**)malloc(n1 * sizeof(PERSON*));
     PERSON **R = (PERSON**)malloc(n2 * sizeof(PERSON*));
 
-    // Copiar datos a los temporales
+    // Copy data to temporary arrays
     for (i = 0; i < n1; i++)
         L[i] = arr[l + i];
     for (j = 0; j < n2; j++)
         R[j] = arr[m + 1 + j];
 
-    // Mezclar los temporales de vuelta en arr[l..r]
+    // Merge the temporary arrays back into arr[l..r]
     i = 0; 
     j = 0; 
     k = l;
     while (i < n1 && j < n2) {
-        // CRITERIO DE ORDENAMIENTO: Riesgo Descendente (> para mayor primero)
+        // SORTING CRITERION: Descending Risk (>= for highest risk first)
         if (L[i]->initialRisk >= R[j]->initialRisk) {
             arr[k] = L[i];
             i++;
@@ -167,14 +205,14 @@ void mergePerson(PERSON **arr, int l, int m, int r) {
         k++;
     }
 
-    // Copiar los elementos restantes de L[], si hay
+    // Copy remaining elements of L[], if any
     while (i < n1) {
         arr[k] = L[i];
         i++;
         k++;
     }
 
-    // Copiar los elementos restantes de R[], si hay
+    // Copy remaining elements of R[], if any
     while (j < n2) {
         arr[k] = R[j];
         j++;
@@ -185,6 +223,7 @@ void mergePerson(PERSON **arr, int l, int m, int r) {
     free(R);
 }
 
+// Recursive function for Merge Sort
 void mergeSortPersonArrayRecursivo(PERSON **arr, int l, int r) {
     if (l < r) {
         int m = l + (r - l) / 2;
@@ -196,7 +235,7 @@ void mergeSortPersonArrayRecursivo(PERSON **arr, int l, int r) {
     }
 }
 
-// public function
+// Public function to sort the person array (pre-processing for Greedy algorithm)
 void sortPersonArray(BIO_SIM_DATA *data) {
     if (!data || !data->personArray || data->max_individuos <= 0) return;
     
@@ -209,7 +248,7 @@ void sortPersonArray(BIO_SIM_DATA *data) {
 ------------
 */
 
-// === UTILIDADES DE INTERCAMBIO ===
+// === SWAP UTILITIES ===
 void swap_strain(STRAIN *a, STRAIN *b) {
     STRAIN temp = *a;
     *a = *b;
@@ -223,30 +262,30 @@ void swap_region(REGION *a, REGION *b) {
 }
 
 // ======================================================================
-// ===  HEAPSORT- Adaptado para crecimiento dinámico
+// ===  HEAPSORT - Adapted for dynamic growth
 // ======================================================================
 
-// Estructura auxiliar para manejar el montículo
+// Auxiliary structure to manage the heap
 typedef struct {
     STRAIN *array;
-    int n;
+    int n; // Current size
 } StrainHeap;
 
 void init_strain_heap(StrainHeap *h, int space) {
-    // Alocación dinámica basada en el conteo ACTUAL
+    // Dynamic allocation based on the current count
     h->array = (STRAIN *)malloc(sizeof(STRAIN) * space);
     h->n = 0;
 }
 
-// Push con "Flotar" (Max-Heap por ID)
+// Push using "Float Up" (Max-Heap by ID)
 void push_strain_heap(StrainHeap *h, STRAIN dato) {
     int i = h->n;
     h->array[i] = dato;
     h->n++;
 
-    // Flotar
+    // Float Up
     for (; i > 0; i = (i - 1) / 2) {
-        // Ordenamos por ID (puedes cambiar a 'beta' o 'letalidad' si prefieres)
+        // Ordering by ID (can be changed to 'beta' or 'lethality' if needed)
         if (h->array[i].id > h->array[(i - 1) / 2].id) {
             swap_strain(&h->array[i], &h->array[(i - 1) / 2]);
         } else {
@@ -255,26 +294,28 @@ void push_strain_heap(StrainHeap *h, STRAIN dato) {
     }
 }
 
-// Pop con "Hundir"
+// Pop using "Sink Down"
 STRAIN pop_strain_heap(StrainHeap *h) {
     STRAIN temp = h->array[0];
     int i = 0;
     
-    // Mover el último al principio
+    // Move the last element to the root
     h->array[0] = h->array[(h->n) - 1];
     h->n--;
 
-    // Hundir
+    // Sink Down
     int hMayor;
     while (2 * i + 1 < h->n) { 
         int left = 2 * i + 1;
         int right = 2 * i + 2;
         
+        // Find the largest child
         if (right < h->n && h->array[right].id > h->array[left].id)
             hMayor = right;
         else
             hMayor = left;
 
+        // Swap if needed
         if (h->array[hMayor].id > h->array[i].id) {
             swap_strain(&h->array[i], &h->array[hMayor]);
             i = hMayor;
@@ -285,26 +326,26 @@ STRAIN pop_strain_heap(StrainHeap *h) {
     return temp;
 }
 
-// --- FUNCIÓN PRINCIPAL: HEAPSORT DINÁMICO ---
+// --- MAIN FUNCTION: DYNAMIC HEAPSORT ---
 void sortStrainArray(BIO_SIM_DATA *data) {
     if (!data || !data->cepas_hash_table) return;
 
-    // 1. OBTENER TAMAÑO REAL ACTUAL (Clave para evitar errores)
+    // 1. GET ACTUAL SIZE (Crucial to avoid errors)
     int total_strains = data->cepas_hash_table->count;
     
     if (total_strains == 0) {
-        printf("[Heapsort] No hay cepas registradas.\n");
+        printf("[Heapsort] No registered strains found.\n");
         return;
     }
 
-    printf("\n[Heapsort] Ordenando %d cepas detectadas (incluyendo mutaciones)...\n", total_strains);
+    printf("\n[Heapsort] Sorting %d detected strains (including mutations)...\n", total_strains);
 
-    // 2. Inicializar Heap con el tamaño exacto necesario
+    // 2. Initialize Heap with the exact required size
     StrainHeap h;
     init_strain_heap(&h, total_strains);
-    if (!h.array) return; // Error de memoria
+    if (!h.array) return; // Memory error
 
-    // 3. Extraer todas las cepas de la Hash Table al Heap
+    // 3. Extract all strains from the Hash Table to the Heap
     for (int i = 0; i < VIRUS_HASH_TABLE_SIZE; i++) {
         STRAIN_NODE *current = data->cepas_hash_table->table[i];
         while (current != NULL) {
@@ -313,16 +354,16 @@ void sortStrainArray(BIO_SIM_DATA *data) {
         }
     }
 
-    // 4. Extraer ordenado (Pop devuelve el mayor -> Orden Descendente)
-    printf("--- Lista de Cepas Ordenada por ID (Desc) ---\n");
+    // 4. Extract sorted (Pop returns the largest -> Descending Order)
+    printf("--- List of Strains Sorted by ID (Desc) ---\n");
     for (int i = 0; i < total_strains; i++) {
         STRAIN s = pop_strain_heap(&h);
-        printf("  ID: %d | Nombre: %s | Beta: %.2f | Mutación: %.3f\n", 
+        printf("  ID: %d | Name: %s | Beta: %.2f | Mutation: %.3f\n", 
                s.id, s.name, s.beta, s.mutationProb);
     }
     printf("--------------------------------------------\n");
 
-    // 5. Liberar memoria temporal
+    // 5. Free temporary memory
     free(h.array);
 }
 
@@ -336,13 +377,13 @@ void sortStrainArray(BIO_SIM_DATA *data) {
 // ===  QUICKSORT 
 // ======================================================================
 
-// Partición Lomuto adaptada a REGION
+// Lomuto Partition adapted for REGION array (sorting by Region ID)
 int partition_region(REGION *arr, int low, int high) {
-    int pivot = arr[high].id; // Pivote: ID de la región
+    int pivot = arr[high].id; // Pivot: Region ID
     int i = (low - 1);
 
     for (int j = low; j <= high - 1; j++) {
-        // Orden Ascendente (ID menor primero)
+        // Ascending Order (smaller ID first)
         if (arr[j].id < pivot) {
             i++;
             swap_region(&arr[i], &arr[j]);
@@ -352,7 +393,7 @@ int partition_region(REGION *arr, int low, int high) {
     return (i + 1);
 }
 
-// Función recursiva
+// Recursive function for QuickSort
 void quickSort_region_recursive(REGION *arr, int low, int high) {
     if (low < high) {
         int pi = partition_region(arr, low, high);
@@ -361,19 +402,20 @@ void quickSort_region_recursive(REGION *arr, int low, int high) {
     }
 }
 
-// --- FUNCIÓN PRINCIPAL: QUICKSORT DINÁMICO ---
+// --- MAIN FUNCTION: DYNAMIC QUICKSORT ---
+// Sorts a temporary array of regions by ID for display purposes
 void sortRegionArray(BIO_SIM_DATA *data) {
     if (!data || !data->regions_table) return;
 
-    // 1. Obtener conteo actual
+    // 1. Get current count
     int total_regions = data->regions_table->count;
     if (total_regions == 0) return;
 
-    // 2. Crear arreglo lineal temporal (Snapshot de los datos)
+    // 2. Create temporary linear array (Data Snapshot)
     REGION *region_array = (REGION *)malloc(sizeof(REGION) * total_regions);
     if (!region_array) return;
 
-    // 3. Llenar arreglo desde la Hash Table
+    // 3. Fill the array from the Hash Table
     int k = 0;
     for (int i = 0; i < REGION_HASH_TABLE_SIZE; i++) { 
         REGION_NODE *current = data->regions_table->table[i];
@@ -385,32 +427,33 @@ void sortRegionArray(BIO_SIM_DATA *data) {
         }
     }
 
-    printf("\n[Quicksort] Ordenando %d regiones por ID...\n", total_regions);
+    printf("\n[Quicksort] Sorting %d regions by ID...\n", total_regions);
 
-    // 4. Ejecutar Quicksort
+    // 4. Execute QuickSort
     quickSort_region_recursive(region_array, 0, total_regions - 1);
 
-    // 5. Mostrar Resultado
+    // 5. Display Result
     for (int i = 0; i < total_regions; i++) {
-        printf("  Region ID: %d | %s | Población: %d | Infectados: %d\n", 
+        printf("  Region ID: %d | %s | Population: %d | Infected: %d\n", 
                region_array[i].id, region_array[i].name, 
                region_array[i].populationCount, region_array[i].infectedCount);
     }
 
-    // 6. Liberar memoria temporal
+    // 6. Free temporary memory
     free(region_array);
 }
 
-/* 
-----------------------------------------------------------------------
+/* ----------------------------------------------------------------------
 -----------------------    INITIAL OUTBREAK    -----------------------
 ----------------------------------------------------------------------
 */
 
+// Establishes the initial infected individuals (patient zero)
 void establish_initial_outbreak(BIO_SIM_DATA *data, int num_brotes, int cepa_id) {
-    // Inicialización de estructuras si no existen
+    // Initialization of structures if they don't exist (Heap, Active Infected Array)
     if (!data->eventQueue) {
-        data->eventQueue = createMinHeap(data->max_individuos * 4); // Capacidad amplia para eventos futuros
+        // Large capacity for future events
+        data->eventQueue = createMinHeap(data->max_individuos * 4); 
         data->activeInfectedIDs = (int*)malloc(data->max_individuos * sizeof(int));
         data->infectedCount = 0;
         data->deathCount = 0;
@@ -419,19 +462,21 @@ void establish_initial_outbreak(BIO_SIM_DATA *data, int num_brotes, int cepa_id)
     STRAIN *virus = get_cepa_by_id(data, cepa_id);
     int count = 0;
 
-    printf("[Brotes] Infectando %d pacientes cero...\n", num_brotes);
+    printf("[OUTBREAK] Infecting %d patient zeros...\n", num_brotes);
 
     while (count < num_brotes) {
         int random_id = (rand() % data->max_individuos) + 1;
         PERSON *p = get_person_by_id(data, random_id);
 
         if (p && p->status == HEALTH) {
+            // Set initial infection status
             p->status = INFECTED;
             p->actualStrainID = cepa_id;
             p->daysInfected = 0;
 
             add_to_active_infected(data, p->id, virus->name);
 
+            // Calculate duration and determine event type (Recovery or Death)
             int duracion = (int)(virus->recovery * 100);
             if (duracion <= 0) duracion = 7;
 
@@ -440,6 +485,7 @@ void establish_initial_outbreak(BIO_SIM_DATA *data, int num_brotes, int cepa_id)
                 type = EVENT_DEATH;
             }
 
+            // Schedule the end-of-infection event
             insertMinHeap(data->eventQueue, p->id, (double)duracion, type);
             count++;
         }
@@ -452,11 +498,12 @@ void establish_initial_outbreak(BIO_SIM_DATA *data, int num_brotes, int cepa_id)
 ----------------------------------------------------------------------
 */
 
+// Runs the simulation logic for one day, processing events and handling propagation
 void run_daily_simulation(BIO_SIM_DATA *data, int dia_actual) {
+    ensureConsistency(data);
     
-    // always generates a new random seed
+    // TEMPORARY: Ensure at least one random person gets infected to keep the simulation going if the active infected list clears out
     if (data) {
-        // Actualizar estado del nuevo infectado
         int randomPersonId = (rand() % data->max_individuos);
         int randomStrainId = (rand() % data->activeStrainCount);
 
@@ -464,27 +511,29 @@ void run_daily_simulation(BIO_SIM_DATA *data, int dia_actual) {
         STRAIN *virus = get_cepa_by_id(data, randomStrainId);
 
         if (!target || !virus) goto a;
-        target->status = INFECTED;
-        target->actualStrainID = randomStrainId;
-        target->daysInfected = 0;
-        target->infectedBy = -1; 
+        
+        if (target->status == HEALTH) {
+            target->status = INFECTED;
+            target->actualStrainID = randomStrainId;
+            target->daysInfected = 0;
+            target->infectedBy = -1; 
 
-        add_to_active_infected(data, target->id, virus->name);
-        // drawInfectionLine(target, spreader);
+            add_to_active_infected(data, target->id, virus->name);
+            
+            // Schedule event
+            int dur = (int)(virus->recovery * 100); 
+            if (dur < 2) dur = 5; 
+            int type = (((double)rand() / RAND_MAX) < virus->caseFatalityRatio) ? EVENT_DEATH : EVENT_RECOVERY;
 
-        // Agendar evento de terminación (Recovery/Death)
-        int dur = (int)(virus->recovery * 100); 
-        if (dur < 2) dur = 5; 
-        int type = (((double)rand() / RAND_MAX) < virus->caseFatalityRatio) ? EVENT_DEATH : EVENT_RECOVERY;
-
-        insertMinHeap(data->eventQueue, target->id, (double)(dia_actual + dur), type);
+            insertMinHeap(data->eventQueue, target->id, (double)(dia_actual + dur), type);
+        }
     }
 
     a: {}
 
-    // === PARTE 1: PROCESAR EVENTOS (Recuperaciones, Muertes y Pérdida de Inmunidad) ===
+    // === PART 1: PROCESS EVENTS (Recoveries, Deaths, Isolation End, Immunity Loss) ===
     while (!isHeapEmpty(data->eventQueue)) {
-        // Ver si el evento más próximo ya ocurrió
+        // Check if the next event has occurred (event time <= current day)
         if (data->eventQueue->array[0].value > dia_actual) break;
 
         HeapNode event = extractMinHeap(data->eventQueue);
@@ -492,50 +541,50 @@ void run_daily_simulation(BIO_SIM_DATA *data, int dia_actual) {
         
         if (!p) continue;
 
-        // --- CASO: PÉRDIDA DE INMUNIDAD (Vuelta a la normalidad) ---
+        // --- CASE: IMMUNITY LOSS (Return to Susceptible) ---
         if (event.type == EVENT_IMMUNITY_LOSS) {
             if (p->status == IMMUNE) {
                 p->status = HEALTH;
-                // Reset total para que pueda volver a enfermarse como nuevo
+                // Full reset so they can get infected again
                 p->actualStrainID = -1;
                 p->infectedBy = -1;
                 p->daysInfected = 0;
-                printf("  [NORMALIDAD] Persona %d vuelve a ser susceptible.\n", p->id);
+                printf("  [NORMALIZED] Person %d returns to susceptible status.\n", p->id);
             }
             continue;
         }
         
+        // --- CASE: END OF ISOLATION ---
         if (event.type == EVENT_END_ISOLATION) {
             if (p->status == ISOLATED) {
-                p->status = HEALTH; // Vuelve a estar sano
-                data->isolatedCount--; // Decremento global
-                printf("  [CUARENTENA FINALIZADA] Persona %d es liberada y esta sana.\n", p->id);
+                p->status = HEALTH; // Returns to healthy status
+                data->isolatedCount--; // Global decrement
+                printf("  [ISOLATION_END] Person %d is released and healthy.\n", p->id);
             }
             continue;
         }
 
-        // --- CASO: FIN DE EFECTO DE VACUNA (NUEVO) ---
+        // --- CASE: END OF VACCINE EFFECT ---
         if (event.type == EVENT_END_VACCINE_EFFECT) {
             if (p->status == VACCINATED) {
-                p->status = HEALTH; // Vuelve a estar sano
-                p->initialRisk *= 2.0; // El riesgo vuelve a la normalidad (0.5 * 2 = 1.0)
-                // printf("  [EFECTO VACUNA PERDIDO] Persona %d es liberada y pierde proteccion.\n", p->id);
+                p->status = HEALTH; // Returns to healthy status
+                p->initialRisk *= 2.0; // Risk returns to normal (0.5 * 2 = 1.0)
+                // printf("  [VACCINE_END] Person %d loses protection.\n", p->id);
             }
             continue;
         }
 
 
-        // --- CASO: FIN DE INFECCIÓN ---
+        // --- CASE: END OF INFECTION (Recovery or Death) ---
         
-
         if (p->status == INFECTED) {
             REGION *region = get_region_by_id(data, p->regionID);
             
             if (event.type == EVENT_DEATH) {
                 p->status = DEATH;
-                printf("!!![DECESO] Persona %d (%s) ha fallecido.\n", p->id, p->name);
+                printf("!!![DEATH] Person %d (%s) has died.\n", p->id, p->name);
                 
-                // Actualizar contadores
+                // Update counters
                 if (region) {
                     if (region->infectedCount > 0) region->infectedCount--;
                     region->deathCount++;
@@ -543,36 +592,37 @@ void run_daily_simulation(BIO_SIM_DATA *data, int dia_actual) {
                 data->deathCount++;
 
             } else { // EVENT_RECOTERY
-                // RECUPERACIÓN
+                // RECOVERY
                 p->status = IMMUNE;
-                printf("  [RECUPERADO] Persona %d (%s) es ahora inmune.\n", p->id, p->name);
+                printf("  [RECOVERED] Person %d (%s) is now immune.\n", p->id, p->name);
                 
                 if (region) {
                     if (region->infectedCount > 0) region->infectedCount--;
                 }
 
-                // --- RESETEO DE VALORES DEL VIRUS ---
+                // --- VIRUS VALUE RESET ---
                 p->actualStrainID = -1;
                 p->daysInfected = 0;
                 p->infectedBy = -1;
 
-                // lower risk by 5%
+                // Lower risk by 5%
                 p->initialRisk = p->initialRisk*0.95;
 
-                // --- PROGRAMAR PÉRDIDA DE INMUNIDAD ---
-                // Duración aleatoria de inmunidad entre 20 y 50 días
+                // --- SCHEDULE IMMUNITY LOSS ---
+                // Random immunity duration between 20 and 50 days
                 int dias_inmune = 20 + (rand() % 31);
                 insertMinHeap(data->eventQueue, p->id, (double)(dia_actual + dias_inmune), EVENT_IMMUNITY_LOSS);
             }
             
-            // Dejar de procesarlo como propagador activo
+            // Stop processing as an active spreader
             remove_from_active_infected(data, p->id);
         }
     }
 
-    // === PARTE 2: PROPAGACIÓN (Grafo Estático) ===
+    // === PART 2: PROPAGATION (Static Graph) ===
     int current_infected_count = data->infectedCount; 
     
+    // Iterate over all active infected individuals
     for (int i = 0; i < current_infected_count; i++) {
         int spreader_id = data->activeInfectedIDs[i];
         PERSON *spreader = get_person_by_id(data, spreader_id);
@@ -582,7 +632,7 @@ void run_daily_simulation(BIO_SIM_DATA *data, int dia_actual) {
         STRAIN *virus = get_cepa_by_id(data, spreader->actualStrainID);
         if (!virus) continue;
 
-        // Recorrer contactos (usando ARRAY ESTÁTICO)
+        // Iterate over contacts (using STATIC ARRAY)
         for (int j = 0; j < spreader->numContacts; j++) {
             if (spreader->contacts[j].contactID <= 0) continue;
 
@@ -590,9 +640,10 @@ void run_daily_simulation(BIO_SIM_DATA *data, int dia_actual) {
             double contactWeight = spreader->contacts[j].weight;
             PERSON *target = get_person_by_id(data, targetID);
 
+            // Check if the target person is HEALTHY (susceptible)
             if (target && target->status == HEALTH) {
                 
-                // Cálculo de Factor Regional (Distancia)
+                // Calculate Regional Factor (Distance)
                 double factorRegional = 1.0;
                 if (spreader->regionID != target->regionID) {
                     REGION *rOrigin = get_region_by_id(data, spreader->regionID);
@@ -604,29 +655,29 @@ void run_daily_simulation(BIO_SIM_DATA *data, int dia_actual) {
                         }
                     }
                     if (distancia > 0) factorRegional = 1.0 / (1.0 + (distancia / 500.0));
-                    else factorRegional = 0.05; // las personas pueden volar, uno nunca sabe
+                    else factorRegional = 0.05; // Base probability for long-distance travel
                 }
                 double personRiskFactor = (1+target->initialRisk)/2.0;
                 double prob = virus->beta * contactWeight * factorRegional * personRiskFactor;
 
-                // Intento de contagio
+                // Attempt to infect
                 if (((double)rand() / RAND_MAX) < prob) {
                     
                     int finalStrainID = virus->id;
                     
-                    // Mutación
+                    // Mutation Check
                     if (((double)rand() / RAND_MAX) < virus->mutationProb) {
                         static int mutation_id_counter = 100; 
                         mutation_id_counter++;
                         STRAIN *mutant = mutate_strain(virus, mutation_id_counter);
                         
                         if (mutant) {
-                            printf("  [MUTACION] Cepa %s mutó a -> %s (ID: %d)\n", virus->name, mutant->name, mutant->id);
+                            printf("  [MUTATED] Strain %s mutated to -> %s (ID: %d)\n", virus->name, mutant->name, mutant->id);
                             
                             data->activeStrainCount++;
                             insertStrainInHash(data->cepas_hash_table, mutant);
                             
-                            // Actualizar TRIE si existe (usamos la variable global definida al final)
+                            // Update TRIE if it exists
                             extern struct TrieNode *strain_trie_root;
                             if (strain_trie_root) {
                                 char cleanName[50];
@@ -643,7 +694,7 @@ void run_daily_simulation(BIO_SIM_DATA *data, int dia_actual) {
                         }
                     }
 
-                    // Actualizar estado del nuevo infectado
+                    // Update status of the newly infected person
                     target->status = INFECTED;
                     target->actualStrainID = finalStrainID;
                     target->daysInfected = 0;
@@ -652,7 +703,7 @@ void run_daily_simulation(BIO_SIM_DATA *data, int dia_actual) {
                     add_to_active_infected(data, target->id, virus->name);
                     // drawInfectionLine(target, spreader);
 
-                    // Agendar evento de terminación (Recovery/Death)
+                    // Schedule termination event (Recovery/Death)
                     int dur = (int)(virus->recovery * 100); 
                     if (dur < 2) dur = 5; 
                     int type = (((double)rand() / RAND_MAX) < virus->caseFatalityRatio) ? EVENT_DEATH : EVENT_RECOVERY;
@@ -661,10 +712,10 @@ void run_daily_simulation(BIO_SIM_DATA *data, int dia_actual) {
                 }
             }
         }
-        spreader->daysInfected++;
+        spreader->daysInfected++; // Increment infected days for the spreader
     }
 
-    printf("\n\n=== FIN DIA %d | Infectados Activos: %d | Fallecidos: %d ===\n\n\n", 
+    printf("\n\n=== END OF DAY %d | Active Infected: %d | Fatalities: %d ===\n\n\n", 
            dia_actual, data->infectedCount, data->deathCount);
 }
 
@@ -674,61 +725,60 @@ void run_daily_simulation(BIO_SIM_DATA *data, int dia_actual) {
 ----------------------------------------------------------------------
 */
 
-// --- TAREA 4: MINIMIZACIÓN DE RIESGO (GREEDY) ---
-// Complejidad: O(N) de ejecución (después del O(N log N) de pre-proceso)
+// --- RISK MINIMIZATION (GREEDY) ---
+// Complexity: O(N) execution (after O(N log N) pre-processing using Merge Sort)
 void minimize_total_risk(BIO_SIM_DATA *data, double reduction_target_percentage, int mode) {
     if (!data || !data->personArray || data->max_individuos == 0) return;
 
-    printf("\n[Tarea 4] Ejecutando algoritmo Greedy de aislamiento...\n");
+    printf("\n[GREEDY] Executing Greedy Isolation/Vaccination algorithm...\n");
 
-    // 1. Calcular Límite Máximo de Personas a Aislar
+    // 1. Calculate Maximum Limit of People to Isolate/Vaccinate
     int maxIsolatedLimit = (int)(data->max_individuos * reduction_target_percentage);
     
-    // 2. Variables de control
+    // 2. Control variables
     double currentEliminatedRisk = 0.0;
     int newlyIsolatedCount = 0;
 
     int isoCount = 0;
 
-    // 3. SELECCIÓN VORAZ (Greedy Selection)
-    // Recorremos el arreglo ya ordenado de MAYOR RIESGO a MENOR.
+    // 3. GREEDY SELECTION
+    // Iterate over the already sorted array from HIGHEST RISK to LOWEST
     for (int i = 0; i < data->max_individuos; i++) {
         PERSON *p = data->personArray[i];
 
-        // --- CONDICIÓN DE TOPE DE CAPACIDAD (NUEVO) ---
-        // Si ya tenemos el número máximo de personas en aislamiento, NO aislamos más.
+        // --- CAPACITY CEILING CONDITION ---
+        // Stop if the maximum number of people for the intervention is reached
         if (isoCount >= maxIsolatedLimit) break;
 
+        // Skip people who are already out of circulation or vaccinated
         if (p->status == DEATH || p->status == ISOLATED || p->status == VACCINATED) {
             continue; 
         }
 
-        // Solo aislamos si la persona está Activa (Sana, Infectada o Inmune) y NO ha sido aislada.
-        // Si estaba infectado, sacarlo de la lista de propagación activa
+        // If the person was infected, remove them from the active spreader list
         if (p->status == INFECTED) {
             remove_from_active_infected(data, p->id);
         }
 
         if (mode == ISOLATED) { 
-            // 3.1a Aplicar aislamiento
+            // 3.1a Apply isolation
             p->status = ISOLATED;
+            // Schedule the end of isolation (e.g., in 20 days)
             insertMinHeap(data->eventQueue, p->id, (double)(simulation_day + 20), EVENT_END_ISOLATION);
         }
             
         if (mode == VACCINATED) { 
-            // 3.1b aplicar vacuna
+            // 3.1b Apply vaccine
             p->status = VACCINATED;
+            // Schedule the end of vaccine effect (e.g., in 50 days)
             insertMinHeap(data->eventQueue, p->id, (double)(simulation_day + 50), EVENT_END_VACCINE_EFFECT);
-            p->initialRisk *= 0.5; // drastically reduced risk
+            p->initialRisk *= 0.5; // Drastically reduced risk
         }
         
 
-        // 3.2 Programar fin de la cuarentena (10 días)
-        // Se asume que esta función se llama al inicio del día (día actual)
-        
-        // 3.3 Actualizar Contadores Globales
+        // 3.2 Update Global Counters
         currentEliminatedRisk += p->initialRisk;
-        data->isolatedCount++; // Incremento global
+        data->isolatedCount++; // Global intervention count
         isoCount++;
         newlyIsolatedCount++;
 
@@ -736,14 +786,13 @@ void minimize_total_risk(BIO_SIM_DATA *data, double reduction_target_percentage,
     printf("%d\n", data->max_individuos);
     printf("%d\n", maxIsolatedLimit);
 
-    printf("  - Límite de Aislamiento: %d personas (%.2f%%)\n", maxIsolatedLimit, reduction_target_percentage * 100);
+    printf("  - Isolation/Vaccination Limit: %d people (%.2f%%)\n", maxIsolatedLimit, reduction_target_percentage * 100);
     if (mode == ISOLATED)
-        printf("  - Se aislaron %d nuevas personas de alto riesgo.\n", newlyIsolatedCount);
+        printf("  - Isolated %d new high-risk people.\n", newlyIsolatedCount);
     else if (mode == VACCINATED) 
-        printf("  - Se vacunaron %d nuevas personas de alto riesgo.\n", newlyIsolatedCount);
+        printf("  - Vaccinated %d new high-risk people.\n", newlyIsolatedCount);
 
-        // Nota: El riesgo total (totalRisk) se calcula en otra fase, aquí solo reportamos el riesgo de los que aislamos hoy.
-    printf("  - Riesgo acumulado eliminado hoy: %.2f\n", currentEliminatedRisk);
+    printf("  - Accumulated risk eliminated today: %.2f\n", currentEliminatedRisk);
 }
 
 /*
@@ -752,6 +801,7 @@ void minimize_total_risk(BIO_SIM_DATA *data, double reduction_target_percentage,
 ----------------------------------------------------------------------
 */
 
+// Creates and initializes a MinHeap structure
 MinHeap* createMinHeap(int capacity) {
     MinHeap* heap = (MinHeap*)malloc(sizeof(MinHeap));
     if (!heap) return NULL;
@@ -761,12 +811,14 @@ MinHeap* createMinHeap(int capacity) {
     return heap;
 }
 
+// Swaps two heap nodes
 void swap(HeapNode *a, HeapNode *b) {
     HeapNode temp = *a;
     *a = *b;
     *b = temp;
 }
 
+// Maintains the min-heap property by sinking down the element at idx
 void minHeapify(MinHeap* heap, int idx) {
     int smallest = idx;
     int left = 2 * idx + 1;
@@ -784,12 +836,15 @@ void minHeapify(MinHeap* heap, int idx) {
     }
 }
 
+// Checks if the heap is empty
 int isHeapEmpty(MinHeap* heap) {
     return !heap || heap->size == 0;
 }
 
+// Inserts a new element and ensures the min-heap property is maintained (floating up)
 void insertMinHeap(MinHeap* heap, int id, double value, int type) {
     if (!heap) return;
+    // Dynamic resizing if capacity is reached
     if (heap->size == heap->capacity) {
         heap->capacity *= 2;
         heap->array = realloc(heap->array, heap->capacity * sizeof(HeapNode));
@@ -801,12 +856,14 @@ void insertMinHeap(MinHeap* heap, int id, double value, int type) {
     heap->array[i].value = value;
     heap->array[i].type = type;
 
+    // Float Up
     while (i && heap->array[(i - 1) / 2].value > heap->array[i].value) {
         swap(&heap->array[i], &heap->array[(i - 1) / 2]);
         i = (i - 1) / 2;
     }
 }
 
+// Extracts the minimum value (root) and restores the min-heap property
 HeapNode extractMinHeap(MinHeap* heap) {
     HeapNode errorNode = {-1, -1.0, -1};
     if (isHeapEmpty(heap)) return errorNode;
@@ -824,6 +881,7 @@ HeapNode extractMinHeap(MinHeap* heap) {
     return root;
 }
 
+// Frees the memory allocated for the heap
 void freeMinHeap(MinHeap* heap) {
     if(heap) {
         if(heap->array) free(heap->array);
@@ -832,45 +890,42 @@ void freeMinHeap(MinHeap* heap) {
 }
 
 // ======================================================================
-// ===  TAREA 5: CAMINO MÁS SUSCEPTIBLE (DIJKSTRA MAX PROB)
+// ===  MOST SUSCEPTIBLE PATH (DIJKSTRA MAX PROB)
 // ======================================================================
 
-
+// Auxiliary structure for path reconstruction in Dijkstra's
 typedef struct{
     int parent_id;
     double probability;
     bool visited;
 }PathNode;
 
+// Finds the path with the highest cumulative contagion probability (using Dijkstra's on -log(P))
 double find_most_probable_path(BIO_SIM_DATA *data, int start_id, int end_id){
     if (!data || !data->persons_table) return 0;
 
-    //int max_id = 0;
+    // Buffer limit for person IDs
+    int limit = data->max_individuos + 100; 
 
-    // Dado que tus IDs son secuenciales en la carga (1 a N), usaremos data->max_individuos + 1.
-    int limit = data->max_individuos + 100; // Buffer
-
-    //Array para Disjktra
+    // Arrays for Dijkstra's implementation
     double *min_cost =(double*)malloc(limit *sizeof(double));
     int *parent = (int*)malloc(limit *sizeof(int));
     bool *visited = (bool*)calloc(limit, sizeof(bool));
 
-    //Para su inicializacion
+    // Initialization
     for(int i=0; i<limit; i++){
         min_cost[i]= INFINITY;
         parent[i]=-1;  
     }
 
-    // Min-Heap para Dijkstra (reutilizamos tu estructura MinHeap)
-    // El 'value' del heap será el costo (-log P)
+    // Min-Heap for Dijkstra (Heap value = cost -log P)
     MinHeap *pq = createMinHeap(limit);
 
-    // Configurar nodo inicial
-    // Probabilidad 1.0 -> -log(1.0) = 0.0
+    // Configure starting node: Probability 1.0 -> -log(1.0) = 0.0 cost
     min_cost[start_id] = 0.0;
-    insertMinHeap(pq, start_id, 0.0, 0); // Type 0 (dummy)
+    insertMinHeap(pq, start_id, 0.0, 0); 
 
-    printf("\n[Tarea 5] Buscando camino de mayor riesgo: ID %d -> ID %d\n", start_id, end_id);
+    printf("\n[DIJKSTRA] Finding highest risk path: ID %d -> ID %d\n", start_id, end_id);
 
     bool found = false;
 
@@ -879,13 +934,13 @@ double find_most_probable_path(BIO_SIM_DATA *data, int start_id, int end_id){
         int u_id = current.id;
         double u_cost = current.value;
 
-        // Si ya llegamos al destino (optimización)
+        // Optimization: Destination reached
         if (u_id == end_id) {
             found = true;
             break;
         }
 
-        // Lazy deletion: Si encontramos un camino mejor antes, ignorar este
+        // Lazy deletion: Skip if a better path was found previously
         if (u_cost > min_cost[u_id]) continue;
         
         visited[u_id] = true;
@@ -893,16 +948,16 @@ double find_most_probable_path(BIO_SIM_DATA *data, int start_id, int end_id){
         PERSON *u = get_person_by_id(data, u_id);
         if (!u) continue;
 
-        // Recorrer vecinos (Contactos)
+        // Iterate over neighbors (Contacts)
         for (int i = 0; i < u->numContacts; i++) {
             int v_id = u->contacts[i].contactID;
-            double weight = u->contacts[i].weight; // Probabilidad de contacto (0 a 1)
+            double weight = u->contacts[i].weight; // Contact probability (0 to 1)
 
             if (v_id <= 0 || v_id >= limit) continue;
             if (visited[v_id]) continue;
 
-            // Calcular costo: w = -log(probabilidad)
-            // Evitar log(0) con un valor muy pequeño
+            // Calculate cost: w = -log(probability)
+            // Use a very small value to avoid log(0)
             if (weight <= 0.0001) weight = 0.0001;
             double edge_cost = -log(weight); 
 
@@ -917,12 +972,12 @@ double find_most_probable_path(BIO_SIM_DATA *data, int start_id, int end_id){
     double final_prob = 0.0;
 
     if (found) {
-        // Reconstruir camino
-        final_prob = exp(-min_cost[end_id]); // Inversa de -log
-        printf("  -> Camino ENCONTRADO! Probabilidad Total: %.6f (%.2f%%)\n", final_prob, final_prob * 100);
+        // Reconstruct path
+        final_prob = exp(-min_cost[end_id]); // Inverse of -log
+        printf("  [PATH_FOUND] Path found! Total Probability: %.6f (%.2f%%)\n", final_prob, final_prob * 100);
         
-        // Imprimir ruta (Backtracking)
-        printf("  -> Ruta: ");
+        // Print route (Backtracking)
+        printf("  [PATH_ROUTE]: ");
         int curr = end_id;
         int path_stack[1000];
         int stack_idx = 0;
@@ -939,14 +994,14 @@ double find_most_probable_path(BIO_SIM_DATA *data, int start_id, int end_id){
         printf("\n");
 
     } else {
-        printf("  -> NO existe camino entre %d y %d.\n", start_id, end_id);
+        printf("  [PATH_NOT_FOUND] No path exists between %d and %d.\n", start_id, end_id);
     }
 
-    // Liberar memoria
+    // Free memory
     free(min_cost);
     free(parent);
     free(visited);
-    freeMinHeap(pq); // Asumiendo que esta función libera solo la estructura del heap temporal
+    freeMinHeap(pq); // Frees the temporary heap structure
 
     return final_prob;
 }
@@ -954,37 +1009,37 @@ double find_most_probable_path(BIO_SIM_DATA *data, int start_id, int end_id){
 
 
 // -------------------------------------------------------------
-// --- (Punto 7): CLUSTERING DE CEPAS (Placeholder) ---
+// --- STRAIN CLUSTERING (TRIE) ---
 // -------------------------------------------------------------
 /*
---------------------------------
+--------------------------------                                                                                                                                                                                                                                                                                
             TRIE
 --------------------------------
 */
-//Declaracion global para la raiz del trie
-
+// Global declaration for the Trie root
+// The struct TrieNode and related functions (createNode, insert) are assumed to be defined/available in Virus.c/Virus.h
 struct TrieNode *strain_trie_root = NULL;
 
+// Builds a TRIE structure to classify strains based on their names
 void cluster_strains(BIO_SIM_DATA *data) {
     if (!data || !data->cepas_hash_table) return;
 
     if(strain_trie_root == NULL){
-        // createNode está definida en Virus.c, pero si no se encuentra el símbolo,
-        // esta llamada asume que está disponible en el linkeo.
-        // Para seguridad, nos basamos en que Virus.h expone las funciones del Trie.
+        // Initializes the Trie root node
         strain_trie_root = createNode(); 
     }
-    printf("\n[Tarea 7] Construyendo el arbol TRIE para su clasificacion de cepas....\n");
+    printf("\n[TRIE_BUILD] Constructing the TRIE tree for strain classification....\n");
 
+    // Iterate over all strains in the Hash Table and insert them into the Trie
     for(int i=0; i<VIRUS_HASH_TABLE_SIZE; i++){
         STRAIN_NODE *strain_node = data->cepas_hash_table->table[i];
-        while(strain_node != NULL){
+        while (strain_node != NULL) {
             STRAIN *s = &strain_node->data;
-            // Inserción en el TRIE (la función insert está en Virus.c)
+            // Insertion into the TRIE (the 'insert' function is assumed available)
             insert(strain_trie_root, s->name);
             strain_node = strain_node->next;
         }
     }
 
-    printf("[Tarea 7] Construccion del TRIE completada.\n");
+    printf("[TRIE_BUILD] TRIE construction completed.\n");
 }

@@ -5,6 +5,7 @@
 double PI =  3.1415926535898;
 
 
+// Draws text at a specific coordinate
 void text(char *texto, float x, float y) {
     float l = glutBitmapLength(GLUT_BITMAP_HELVETICA_12, (const unsigned char *)texto);
     glRasterPos2f(x-(l/2.0), y);
@@ -14,6 +15,7 @@ void text(char *texto, float x, float y) {
     }
 }
 
+// Draws a filled circle (using a triangle fan)
 void circle(float rad, int n_seg,double r, double g, double b, double alpha) {
     // glEnable(GL_BLEND);
     // glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);

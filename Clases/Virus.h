@@ -18,30 +18,34 @@ STRAIN structures
 -----------------
 */
 
-typedef struct Strain{ // MAIN structure
+// Main structure representing a viral strain
+typedef struct Strain{ 
     int id;
     char name[20];
-    double beta; 
-    double caseFatalityRatio;
-    double recovery;
-    double mutationProb;
+    double beta; // Contagion rate
+    double caseFatalityRatio; // Lethality rate
+    double recovery; // Recovery time factor
+    double mutationProb; // Probability of mutation
 } STRAIN;
 
-typedef struct StrainNode { // HASH wrapper structure
+// Node structure for the Strain Hash Table (linked list for collisions)
+typedef struct StrainNode { 
     STRAIN data;
     struct StrainNode *next;
 } STRAIN_NODE;
 
-typedef struct { // HASH TABLE centralized structure
+// Hash Table structure for efficient Strain lookup
+typedef struct { 
     STRAIN_NODE *table[VIRUS_HASH_TABLE_SIZE];
     int count;
 } STRAIN_HASH_TABLE;
 
-struct TrieNode { // TRIE for strain classification
+// Node structure for the TRIE (prefix tree) used for strain classification
+typedef struct TrieNode { 
     struct TrieNode *children[26];
     int isEndEfWord;
     STRAIN *strain;
-};
+} TrieNode;
 
 
 /*
@@ -58,12 +62,13 @@ STRAIN* searchStrainInHash(STRAIN_HASH_TABLE *ht, int strain_id);
 void freeStrainInHash(STRAIN_HASH_TABLE *ht);
 
 //------------------------------------
-// For Strain Logic and Classification
+// For Strain Logic and Classification (TRIE)
 int isempty(struct TrieNode *root);
 void insert(struct TrieNode *root, const char *key);
 struct TrieNode *createNode();
 struct TrieNode* search(struct TrieNode *root, const char *key);
 struct TrieNode *deletehelper(struct TrieNode *root, const char *key, int depth);
 void deletekey(struct TrieNode *root, const char *key);
+STRAIN* mutate_strain(STRAIN *parent, int new_id);
 
 #endif

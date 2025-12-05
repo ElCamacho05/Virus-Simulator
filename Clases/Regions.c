@@ -20,6 +20,7 @@ REGION Functions
 
 // ---------------
 // Basic Functions
+// Allocates memory and initializes a new region structure
 REGION *createRegion(int id, char name[]) {
     REGION *reg = (REGION *) malloc(sizeof(REGION));
     if (reg == NULL) return NULL;
@@ -29,20 +30,24 @@ REGION *createRegion(int id, char name[]) {
     reg->infectedCount = 0;
     
     reg->populationCount = 0;
+    // Allocates memory to store IDs of people belonging to this region
     reg->peopleIDs = (int *) calloc(MAX_POPULATION, sizeof(int)); 
 
     reg->numConnections = 0;
+    // Initialize static connections array
     for(int i=0; i<MAX_REGION_CONNECTIONS; i++) {
         reg->connections[i].targetRegionId = -1;
         reg->connections[i].distanceKM = 0.0;
     }
 
+    // Initialize drawing configurations
     R_DRAW_UTILS dC = {{0.0, 0.0}, 0.0};
     reg->drawConf = dC;
 
     return reg;
 }
 
+// Adds a new connection (edge) to another region
 void addRegionConnection(REGION *r, int targetId, double km) {
     if (!r || r->numConnections >= MAX_REGION_CONNECTIONS) return;
     r->connections[r->numConnections].targetRegionId = targetId;
@@ -52,11 +57,13 @@ void addRegionConnection(REGION *r, int targetId, double km) {
 
 // ------------------
 // For Hash Functions
+// Creates and initializes the Region Hash Table
 REGION_HASH_TABLE* createRegionHashTable() {
     REGION_HASH_TABLE *ht = (REGION_HASH_TABLE*)calloc(1, sizeof(REGION_HASH_TABLE));
     return ht;
 }
 
+// Inserts a Region structure into the Hash Table using the region's ID as the key
 void insertRegionInHash(REGION_HASH_TABLE *ht, const REGION *region) {
     if (!ht || !region) return;
 
@@ -70,6 +77,7 @@ void insertRegionInHash(REGION_HASH_TABLE *ht, const REGION *region) {
     ht->count++;
 }
 
+// Searches for a region by its ID in the Hash Table
 REGION* searchRegionInHash(REGION_HASH_TABLE *ht, int region_id) {
     if (!ht) return NULL;
 
@@ -85,6 +93,7 @@ REGION* searchRegionInHash(REGION_HASH_TABLE *ht, int region_id) {
     return NULL;
 }
 
+// Frees all memory allocated for the Hash Table and its nodes
 void freeRegionInHash(REGION_HASH_TABLE *ht) {
     if (!ht) return;
     for (int i = 0; i < REGION_HASH_TABLE_SIZE; i++) {

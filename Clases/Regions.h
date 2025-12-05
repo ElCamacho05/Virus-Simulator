@@ -10,16 +10,19 @@
 extern int RegionsCount;
 
 // REGION structures
+// Defines a connection (edge) between two regions
 typedef struct {
     int targetRegionId;
     double distanceKM;
 } RegionConnection;
 
+// Drawing utilities for graphical representation
 typedef struct RegionDrawUtils {
     double pos[2];
     double radio;
 } R_DRAW_UTILS;
 
+// Main structure representing a geographical region
 typedef struct Region{
     int id;
     char name[20];
@@ -29,18 +32,21 @@ typedef struct Region{
     int infectedCount;
     int deathCount;
 
+    // Connections to other regions, forming a graph
     RegionConnection connections[MAX_REGION_CONNECTIONS];
     int numConnections;
 
     R_DRAW_UTILS drawConf;
 } REGION;
 
-typedef struct RegionNode { // HASH wrapper structure
+// Node structure for the Region Hash Table (linked list for collisions)
+typedef struct RegionNode { 
     REGION data;
     struct RegionNode *next;
 } REGION_NODE;
 
-typedef struct { // HASH TABLE centralized structure
+// Hash Table structure for efficient Region lookup
+typedef struct { 
     REGION_NODE *table[REGION_HASH_TABLE_SIZE];
     int count;
 } REGION_HASH_TABLE;

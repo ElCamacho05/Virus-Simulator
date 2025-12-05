@@ -9,11 +9,10 @@
 #include "Clases/Regions.h"
 #include "Clases/Virus.h"
 
-// Data retrieve (DAO_General.h provides the initial data reading)
+// Data access (DAO_General.h provides the initial data reading)
 #include "DAO_General.h"
 
 // Drawing & Plotting
-// #include "OpenGLDrawing/interface.h"
 #include "OpenGLDrawing/interface.h"
 #include "OpenGLDrawing/utils.h"
 
@@ -31,7 +30,7 @@ int main(int argc, char *argv[]) {
     init_simulation_data();
 
     if (GlobalData == NULL) {
-        fprintf(stderr, "Error fatal: No se pudieron cargar los datos iniciales. Finalizando.\n");
+        fprintf(stderr, "[FATAL_ERROR] Could not load initial data: Exiting\n");
         return 1;
     }
 
@@ -40,6 +39,7 @@ int main(int argc, char *argv[]) {
 }
 
 
+// Loads all data structures and initializes the simulation environment
 void init_simulation_data() {
     // Load initial data from CSV files
     GlobalData = load_initial_data(
@@ -51,19 +51,19 @@ void init_simulation_data() {
     );
 
     if (GlobalData != NULL) {
-        printf("Simulator initialized. Population loaded.\n");
+        printf("[SIM_INIT] Simulator initialized: Population loaded\n");
         
-        // TODO: Set initial outbreaks (Task 2)
+        // TASK 2: Set initial outbreaks
         establish_initial_outbreak(GlobalData, 10, 1);
 
-        // --- TAREA 5: CAMINO CRÍTICO ---
-        // Prueba: Buscar camino entre la persona 1 y la 50 (ajusta IDs según tu data)
-        // Solo si existen en la población
+        // TASK 5: CRITICAL PATH
+        // Test: Find path between person 1 and 50 (Adjust IDs based on your data)
+        // Only run if the population exists
         if (GlobalData->max_individuos >= 50) {
             find_most_probable_path(GlobalData, 1, 50);
         }
         
-        // TODO: Initialize strain clustering (Task 7)
+        // TASK 7: Initialize strain clustering
         cluster_strains(GlobalData);
     }
 }

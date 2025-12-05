@@ -8,30 +8,31 @@
 #include "Clases/Regions.h"
 #include "Algorithms/Algorithms.h"
 
-// --- ESTRUCTURAS PARA HISTORIAL ---
+// --- STRUCTURES FOR HISTORY ---
+// Represents a single day's state for a person
 typedef struct DailyHistory {
     int day;
     int status; // HealthStatus
     int strain_id;
 } DAILY_HISTORY_ENTRY;
 
-// Estructura que almacena el historial de un solo paciente.
+// Structure that stores the history for a single patient
 typedef struct PersonHistory {
     DAILY_HISTORY_ENTRY *entries;
     int entry_count;
     int capacity;
 } PERSON_HISTORY;
 
-// Nodo de la Tabla Hash de Historial (Indexada por ID de Persona)
+// Hash Table History Node (Indexed by Person ID)
 typedef struct HistoryNode {
     int person_id;
     PERSON_HISTORY history;
     struct HistoryNode *next;
 } HISTORY_NODE;
 
-// Tabla Hash de Historial Centralizada
+// Centralized History Hash Table
 typedef struct {
-    HISTORY_NODE *table[PERSON_HASH_TABLE_SIZE]; // Reutilizamos el tamaño de la tabla Person
+    HISTORY_NODE *table[PERSON_HASH_TABLE_SIZE]; // Reuses the Person table size
     int count;
 } HISTORY_HASH_TABLE;
 
@@ -41,20 +42,19 @@ typedef struct BioSimData {
     STRAIN_HASH_TABLE  *cepas_hash_table; 
     REGION_HASH_TABLE  *regions_table;
 
-    // arrays to keep data sorted for each day
-    // daily sorting occurs in 'void idle', in display,
-    // so all data is updated daily 
+    // Arrays to keep data sorted for quick access (MergeSort pre-processing)
+    // Daily sorting occurs in 'void idle'
     PERSON **personArray;
     REGION *regionArray;
     STRAIN *strainArray;
 
-    // Tabla Hash para el historial (O(1) por paciente)
+    // Hash Table for history (O(1) lookup per patient)
     HISTORY_HASH_TABLE *history_table;
 
     // Event Queue for simulation
     MinHeap *eventQueue; 
 
-    // Optimized infections from O(N) to O(Infected)
+    // Optimized infections array for O(Infected) propagation
     int *activeInfectedIDs; 
     int infectedCount;
     int deathCount;
@@ -86,12 +86,9 @@ void initializePositions(BIO_SIM_DATA *data);
 // Save simulation state
 void save_contagion_history(BIO_SIM_DATA *data, int dia_simulacion);
 
-// Función para inicializar historial
+// Function to initialize history hash table
 HISTORY_HASH_TABLE* createHistoryHashTable();
 
-// Función para consulta O(1) de historial
+// Function for O(1) history lookup by person ID and day
 DAILY_HISTORY_ENTRY* get_history_by_id_and_day(BIO_SIM_DATA *data, int person_id, int day);
-
-
-
 #endif

@@ -9,6 +9,7 @@ extern int simulation_day;
 extern int elapsedTime;
 extern double secondsPerDay;
 
+// Updates the current elapsed time from the window start
 void updateTime();
 
 #endif
