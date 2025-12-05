@@ -992,6 +992,12 @@ double find_most_probable_path(BIO_SIM_DATA *data, int start_id, int end_id){
         
         for (int i = stack_idx - 1; i >= 0; i--) {
             printf("%d", path_stack[i]);
+
+            PERSON *p = get_person_by_id(data, path_stack[i]);
+            p->status = VACCINATED;
+            insertMinHeap(data->eventQueue, p->id, (double)(simulation_day + 50), EVENT_END_VACCINE_EFFECT);
+            p->initialRisk *= 0.5;
+
             if (i > 0) printf(" -> ");
         }
         printf("\n");

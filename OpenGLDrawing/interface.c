@@ -13,6 +13,8 @@
 #define X 0
 #define Y 1
 
+#define PATH_DURATION 5
+
 int totalDaysPaused = 0; // sum of all the time that the app were kept paused
 double sttPausedSimAt;
 double endPausedSimAt;
@@ -388,5 +390,11 @@ void keyboard(unsigned char key, int x, int y) {
     if (key == 'v' || key == 'V') { // minimize risk by vaccinating population
         // double vaccinationPercentage = (double)GlobalData->infectedCount/(double)GlobalData->max_individuos;
         minimize_total_risk(GlobalData, percentageOfAffected, VACCINATED);
+    }
+    if (key == 'd' || key == 'D') {
+        int r1 = (rand() % GlobalData->max_individuos) + 1;
+        int r2 = (rand() % GlobalData->max_individuos) + 1;
+
+        find_most_probable_path(GlobalData, r1, r2);
     }
 }
