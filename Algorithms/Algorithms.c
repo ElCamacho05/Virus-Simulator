@@ -240,6 +240,8 @@ void sortPersonArray(BIO_SIM_DATA *data) {
     if (!data || !data->personArray || data->max_individuos <= 0) return;
     
     mergeSortPersonArrayRecursivo(data->personArray, 0, data->max_individuos - 1);
+
+    printf("== TOP PERSON: %s | Probability: %0.2f\n", data->personArray[0]->name, data->personArray[0]->initialRisk);
 }
 
 /*
@@ -338,7 +340,7 @@ void sortStrainArray(BIO_SIM_DATA *data) {
         return;
     }
 
-    printf("\n[Heapsort] Sorting %d detected strains (including mutations)...\n", total_strains);
+    // printf("\n[Heapsort] Sorting %d detected strains (including mutations)...\n", total_strains);
 
     // 2. Initialize Heap with the exact required size
     StrainHeap h;
@@ -355,13 +357,16 @@ void sortStrainArray(BIO_SIM_DATA *data) {
     }
 
     // 4. Extract sorted (Pop returns the largest -> Descending Order)
-    printf("--- List of Strains Sorted by ID (Desc) ---\n");
-    for (int i = 0; i < total_strains; i++) {
-        STRAIN s = pop_strain_heap(&h);
-        printf("  ID: %d | Name: %s | Beta: %.2f | Mutation: %.3f\n", 
+    // printf("--- List of Strains Sorted by ID (Desc) ---\n");
+    // for (int i = 0; i < total_strains; i++) {
+    //     STRAIN s = pop_strain_heap(&h);
+    //     printf("  ID: %d | Name: %s | Beta: %.2f | Mutation: %.3f\n", 
+    //            s.id, s.name, s.beta, s.mutationProb);
+    // }
+    STRAIN s = pop_strain_heap(&h);
+        printf("== TOP STRAIN: ID: %d | Name: %s | Beta: %.2f | Mutation: %.3f ==\n", 
                s.id, s.name, s.beta, s.mutationProb);
-    }
-    printf("--------------------------------------------\n");
+    // printf("--------------------------------------------\n");
 
     // 5. Free temporary memory
     free(h.array);
@@ -379,12 +384,12 @@ void sortStrainArray(BIO_SIM_DATA *data) {
 
 // Lomuto Partition adapted for REGION array (sorting by Region ID)
 int partition_region(REGION *arr, int low, int high) {
-    int pivot = arr[high].id; // Pivot: Region ID
+    int pivot = arr[high].infectedCount; // Pivot: Region ID
     int i = (low - 1);
 
     for (int j = low; j <= high - 1; j++) {
         // Ascending Order (smaller ID first)
-        if (arr[j].id < pivot) {
+        if (arr[j].infectedCount < pivot) {
             i++;
             swap_region(&arr[i], &arr[j]);
         }
@@ -427,17 +432,20 @@ void sortRegionArray(BIO_SIM_DATA *data) {
         }
     }
 
-    printf("\n[Quicksort] Sorting %d regions by ID...\n", total_regions);
+    // printf("\n[Quicksort] Sorting %d regions by ID...\n", total_regions);
 
     // 4. Execute QuickSort
     quickSort_region_recursive(region_array, 0, total_regions - 1);
 
     // 5. Display Result
-    for (int i = 0; i < total_regions; i++) {
-        printf("  Region ID: %d | %s | Population: %d | Infected: %d\n", 
-               region_array[i].id, region_array[i].name, 
-               region_array[i].populationCount, region_array[i].infectedCount);
-    }
+    // for (int i = 0; i < total_regions; i++) {
+    //     printf("  Region ID: %d | %s | Population: %d | Infected: %d\n", 
+    //            region_array[i].id, region_array[i].name, 
+    //            region_array[i].populationCount, region_array[i].infectedCount);
+    // }
+    printf("== TOP REGION: Region ID: %d | %s | Population: %d | Infected: %d\n", 
+               region_array[0].id, region_array[0].name, 
+               region_array[0].populationCount, region_array[0].infectedCount);
 
     // 6. Free temporary memory
     free(region_array);
@@ -720,6 +728,10 @@ void run_daily_simulation(BIO_SIM_DATA *data, int dia_actual) {
 
     printf("\n\n=== END OF DAY %d | Active Infected: %d | Fatalities: %d ===\n\n\n", 
            dia_actual, data->infectedCount, data->deathCount);
+    printf("== TOP DATA: ==\n");
+    sortPersonArray(data);
+    sortRegionArray(data);
+    sortStrainArray(data);
 }
 
 /*
