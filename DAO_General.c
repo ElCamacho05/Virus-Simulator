@@ -221,7 +221,8 @@ BIO_SIM_DATA* load_initial_data(const char *cepas_f, const char *terr_f, const c
                 if(p) {
                     if (scanned < 6) status = HEALTH;
                     p->status = (HealthStatus)status;
-                    p->actualStrainID = actualStrainID;
+                    // p->actualStrainID = actualStrainID;
+                    p->actualStrainID = -1; // initialized 
                     p->infectedBy = -1;
                     REGION *r = searchRegionInHash(data->regions_table, p->regionID);
                     r->populationCount++,

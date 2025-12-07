@@ -11,7 +11,7 @@ int pause = 0;
 // Current simulated day number
 int simulation_day = 0;
 // Factor: how many real seconds equal one simulated day
-double secondsPerDay = 1;
+double secondsPerDay = 2;
 
 // Stores the time elapsed since the simulation started (in ms)
 int elapsedTime = 0;

@@ -135,7 +135,8 @@ void add_to_active_infected(BIO_SIM_DATA *data, int person_id, char strainName[]
     PERSON *person = get_person_by_id(data, person_id);
     if (person) {
         REGION *region = get_region_by_id(data, person->regionID);
-        if (region) region->infectedCount++;
+        if (region) {printf("found\n"); region->infectedCount++;}
+        else {printf("not found\n");}
     }
 }
 
@@ -389,7 +390,7 @@ int partition_region(REGION *arr, int low, int high) {
 
     for (int j = low; j <= high - 1; j++) {
         // Ascending Order (smaller ID first)
-        if (arr[j].infectedCount < pivot) {
+        if (arr[j].infectedCount > pivot) {
             i++;
             swap_region(&arr[i], &arr[j]);
         }
@@ -725,13 +726,14 @@ void run_daily_simulation(BIO_SIM_DATA *data, int dia_actual) {
         }
         spreader->daysInfected++; // Increment infected days for the spreader
     }
-
-    printf("\n\n=== END OF DAY %d | Active Infected: %d | Fatalities: %d ===\n\n\n", 
+    ensureConsistency(data);
+    printf("\n\n=== END OF DAY %d | Active Infected: %d | Fatalities: %d ===\n", 
            dia_actual, data->infectedCount, data->deathCount);
     printf("== TOP DATA: ==\n");
     sortPersonArray(data);
     sortRegionArray(data);
     sortStrainArray(data);
+    printf("\n\n");
 }
 
 /*

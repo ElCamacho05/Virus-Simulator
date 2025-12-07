@@ -6,7 +6,7 @@ to do:
 	+++ Logica del programa
 		--- LISTO (ARMANDO) (Punto 2) establecer brotes aleatorios iniciales (10 personas)
 		--- LISTO (ARMANDO) (Punto 3) simulacion de contagios diarios entre personas (probabilistica)
-		--- (CAMACHO) (Punto 4) algoritmo para controlar la epidemia (simular cuarentenas para reducir riesgos)
+		--- LISTO (CAMACHO) (Punto 4) algoritmo para controlar la epidemia (simular cuarentenas para reducir riesgos)
 				se podria dividir en diferentes zonas de aislamiento, en cuarentena para evitar los contagios, las personas que ya estan contagiados o tuvieron contacto con 					personas infercatas(o con sintomas a la enfermedad)
 		--- (CAMACHO) (Punto 5) obtener el camino mas suceptible a infeccion (en comparacion con otro nodo lo que va hacer el territorio)
 		--- (CAMACHO) (Punto 6) obtener la mejor ruta para: (PREGUNTAR)
